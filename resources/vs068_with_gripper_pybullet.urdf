@@ -1,0 +1,425 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot name="vs068">
+        <material name="white">
+                <color rgba="1.0 1.0 1.0 1.0" />
+        </material>
+        <material name="blue">
+                <color rgba="0.0 0.0 1.0 0.7" />
+        </material>
+        <material name="yellow">
+                <color rgba="0.7 1 0 0.3" />
+                <ambient>0.5 0.75 0 1</ambient>
+                <diffuse>0.7 0.9 0 1</diffuse>
+                <specular>0.2 0.2 0.2 64</specular>
+                <emissive>0.1 0 0.1 1</emissive>
+        </material>
+        <material name="denso_white">
+                <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+        </material>
+        <material name="gripper_grey">
+                <color rgba="0.411 0.498 0.514 1.0" />
+        </material>
+
+        <link name="world" />
+        <joint name="world_to_base" type="fixed">
+                <origin rpy="0 0 0" xyz="0 0 0" />
+                <parent link="world" />
+                <child link="base_box" />
+        </joint>
+        <link name="base_box">
+        <inertial>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <mass value="10" />
+                <inertia ixx="1" ixy="0" ixz="0"
+                        iyy="1" iyz="0" izz="1" />
+        </inertial>
+        <visual>
+                <geometry>
+                        <mesh filename="meshes/base_box.stl" scale="0.001 0.001 0.001" />
+                </geometry>
+                <material name="blue" /> 
+        </visual>
+        <collision>
+                <geometry>
+                        <mesh filename="meshes/base_box.stl" scale="0.001 0.001 0.001" />
+                </geometry>
+        </collision>
+        </link>
+        <joint name="base" type="fixed">
+                <origin xyz="0 0 0.156" rpy="0 0 -1.5708" />
+                <parent link="base_box" />
+                <child link="base_link" />
+        </joint>
+
+        <link name="base_link">
+        <inertial>
+                <origin xyz="-0.000122727607279245 0.0789983817650448 -0.00825987553772271" rpy="0 0 0" />
+                <mass value="8.63141697865396" />
+                <inertia ixx="0.0762856758006792" ixy="-0.000145476887151232" ixz="-3.43485895969659E-05"
+                        iyy="0.0505813655959526" iyz="0.00390971667280202" izz="0.0695322443973483" />
+        </inertial>
+        <visual>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                        <mesh filename="meshes/base_link.STL" />
+                </geometry>
+                <material name="denso_white" />
+        </visual>
+        <collision>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                        <mesh filename="meshes/base_link.STL" />
+                </geometry>
+        </collision>
+        </link>
+        <link name="link1">
+        <inertial>
+                <origin xyz="0.0055746 -0.001764 0.09429" rpy="0 0 0" />
+                <mass value="5.5592" />
+                <inertia ixx="0.060877" ixy="0.00032656" ixz="-0.0046825" iyy="0.045959" iyz="0.0013857"
+                        izz="0.042419" />
+        </inertial>
+        <visual>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                        <mesh filename="meshes/link1.STL" />
+                </geometry>
+                <material name="denso_white" />
+        </visual>
+        <collision>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                        <mesh filename="meshes/link1.STL" />
+                </geometry>
+        </collision>
+        </link>
+        <joint name="joint0_1" type="revolute">
+                <origin xyz="0 0 0.1975" rpy="0 0 -1.5708" />
+                <parent link="base_link" />
+                <child link="link1" />
+                <axis xyz="0 0 1" />
+                <limit lower="-2.9671" upper="2.9671" effort="100000" velocity="6.2134" />
+        </joint>
+        <link name="link2">
+        <inertial>
+                <origin xyz="-0.011100059776704 -0.122130805741436 -0.0673277210119841" rpy="0 0 0" />
+                <mass value="7.47241921119094" />
+                <inertia ixx="0.141800415914062" ixy="-0.0032161354971075" ixz="0.000123151587563144"
+                        iyy="0.0348536924803676" iyz="-0.00301516838757327" izz="0.13211646459445" />
+        </inertial>
+        <visual>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                        <mesh filename="meshes/link2.STL" />
+                </geometry>
+                <material name="denso_white" />
+        </visual>
+        <collision>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                        <mesh filename="meshes/link2.STL" />
+                </geometry>
+        </collision>
+        </link>
+        <joint name="joint1_2" type="revolute">
+                <origin xyz="0.03 0.066 0.1975" rpy="-1.5708 0 0" />
+                <parent link="link1" />
+                <child link="link2" />
+                <axis xyz="0 0 1" />
+                <limit lower="-1.74533" upper="2.35619" effort="100000" velocity="5.28835" />
+        </joint>
+        <link name="link3">
+        <inertial>
+                <origin xyz="-0.0491224376803171 0.00617030276793995 -0.0613766364747311" rpy="0 0 0" />
+                <mass value="3.98629951386676" />
+                <inertia ixx="0.0111044632685743" ixy="0.00172841378567076" ixz="0.000292617829389277"
+                        iyy="0.0252227763988427" iyz="-2.9724659354712E-05" izz="0.0248859392267326" />
+        </inertial>
+        <visual>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                        <mesh filename="meshes/link3.STL" />
+                </geometry>
+                <material name="denso_white" />
+        </visual>
+        <collision>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                        <mesh filename="meshes/link3.STL" />
+                </geometry>
+        </collision>
+        </link>
+        <joint name="joint2_3" type="revolute">
+                <origin xyz="0 -0.34 -0.0045" rpy="0 0 1.5707" />
+                <parent link="link2" />
+                <child link="link3" />
+                <axis xyz="0 0 1" />
+                <limit lower="-2.0944" upper="2.6529" effort="100000" velocity="6.59734" />
+        </joint>
+        <link name="link4">
+        <inertial>
+                <origin xyz="0.00618070367513479 -0.000798886212659555 0.0583205826414259" rpy="0 0 0" />
+                <mass value="1.46492735699401" />
+                <inertia ixx="0.00499424774512178" ixy="-1.10912544455978E-06" ixz="-0.000400807159125505"
+                        iyy="0.00536125112345585" iyz="-1.74738698992761E-05" izz="0.00266834051341128" />
+        </inertial>
+        <visual>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                        <mesh filename="meshes/link4.STL" />
+                </geometry>
+                <material name="denso_white" />
+        </visual>
+        <collision>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                        <mesh filename="meshes/link4.STL" />
+                </geometry>
+        </collision>
+        </link>
+        <joint name="joint3_4" type="revolute">
+                <origin xyz="-0.197 0.02 -0.0615" rpy="3.1416 1.5708 0" />
+                <parent link="link3" />
+                <child link="link4" />
+                <axis xyz="0 0 1" />
+                <limit lower="-4.71239" upper="4.71239" effort="100000" velocity="8.29031" />
+        </joint>
+        <link name="link5">
+        <inertial>
+                <origin xyz="-0.0150943182068006 -0.000432785856204654 0.0258772243615742" rpy="0 0 0" />
+                <mass value="0.519102318342428" />
+                <inertia ixx="0.000377482868071637" ixy="-7.5490296090654E-06" ixz="2.45004206117579E-05"
+                        iyy="0.000778804437226065" iyz="1.1497851036214E-06" izz="0.000888284142908022" />
+        </inertial>
+        <visual>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                        <mesh filename="meshes/link5.STL" />
+                </geometry>
+                <material name="denso_white" />
+        </visual>
+        <collision>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                        <mesh filename="meshes/link5.STL" />
+                </geometry>
+        </collision>
+        </link>
+        <joint name="joint4_5" type="revolute">
+                <origin xyz="-0.0295 0 0.143" rpy="0 1.5708 0" />
+                <parent link="link4" />
+                <child link="link5" />
+                <axis xyz="0 0 1" />
+                <limit lower="-2.0944" upper="2.0944" effort="100000" velocity="8.25541" />
+        </joint>
+
+
+        <joint name="joint5_eef" type="revolute">
+                <origin xyz="-0.085 -0.0005 0.029" rpy="1.571 3.141 -1.571" />
+                <parent link="link5" />
+                <child link="end_effector" />
+                <axis xyz="0 0 1" />
+                <limit lower="-3.1" upper="3.1" effort="100000" velocity="12.566" />
+        </joint>
+
+        <link name="end_effector">
+        <inertial>
+                <origin xyz="5.5447393612675E-18 -4.56574706561055E-18 0.040472762765948" rpy="0 0 0" />
+                <mass value="0.229374149544977" />
+                <inertia ixx="0.000152792509895407" ixy="-1.32233353659445E-20" ixz="2.99173912945335E-20"
+                        iyy="0.000215355282105043" iyz="4.24192387605052E-21" izz="0.000142454408200763" />
+        </inertial>
+        <visual>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                        <mesh filename="meshes/base_gripper.STL" />
+                </geometry>
+                <material name="gripper_grey" />
+        </visual>
+        <collision>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                        <mesh filename="meshes/base_gripper.STL" />
+                </geometry>
+        </collision>
+        </link>
+
+        <link name="end_effector_palm_dummy">
+        <inertial>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <mass value="0" />
+                <inertia ixx="1" ixy="0" ixz="0"
+                        iyy="1" iyz="0" izz="1" />
+        </inertial>
+        </link>
+        <joint name="eef_palm" type="fixed">
+                <origin xyz="0 0 0.09" rpy="0 0 1.571" />
+                <parent link="end_effector" />
+                <child link="end_effector_palm_dummy" />
+        </joint>
+
+        <link name="finger_1">
+        <inertial>
+                <origin xyz="-0.0181840208861592 -8.36291538269603E-08 0.00832378206907532" rpy="0 0 0" />
+                <mass value="0.00384042455523011" />
+                <inertia ixx="6.63496508527019E-07" ixy="7.76820115278585E-13" ixz="-1.19049632231028E-07"
+                        iyy="8.15651137637604E-07" iyz="1.02943506944988E-11" izz="5.34556227349764E-07" />
+        </inertial>
+        <visual>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                        <mesh filename="meshes/finger_1.STL" />
+                </geometry>
+                <material name="gripper_grey" />
+        </visual>
+        <collision>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                        <mesh filename="meshes/finger_1.STL" />
+                </geometry>
+        </collision>
+        </link>
+        <joint name="base_finger_1" type="prismatic">
+                <origin xyz="0 0 0.072801" rpy="0 0 0" />
+                <parent link="end_effector" />
+                <child link="finger_1" />
+                <axis xyz="-1 0 0" />
+                <limit lower="0" upper="0.14" effort="100000" velocity="0.001" />
+        </joint>
+        <link name="finger_2">
+        <inertial>
+                <origin xyz="0.0181840208861592 8.36291538299396E-08 0.00832378206907529" rpy="0 0 0" />
+                <mass value="0.00384042455523011" />
+                <inertia ixx="6.63496508527017E-07" ixy="7.76820115307182E-13" ixz="1.19049632231027E-07"
+                        iyy="8.15651137637603E-07" iyz="-1.02943506945105E-11" izz="5.34556227349765E-07" />
+        </inertial>
+        <visual>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                        <mesh filename="meshes/finger_2.STL" />
+                </geometry>
+                <material name="gripper_grey" />
+        </visual>
+        <collision>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                        <mesh filename="meshes/finger_2.STL" />
+                </geometry>
+        </collision>
+        </link>
+        <joint name="base_finger_2" type="prismatic">
+                <origin xyz="0 0 0.072801" rpy="0 0 3.14159265359" />
+                <parent link="end_effector" />
+                <child link="finger_2" />
+                <axis xyz="-1 0 0" />
+                <limit lower="0" upper="0.14" effort="100000" velocity="0.001" />
+                <mimic joint="base_finger_1" multiplier="1" offset="0" />
+        </joint>
+
+        <joint name="camera_joint" type="fixed">
+                <origin xyz="0 0.1 0.02" rpy="0 -1.9 1.5707" />
+                <parent link="end_effector" />
+                <child link="camera_link" />
+        </joint>
+        
+        <link name="camera_link">
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                
+                <visual name="visual_cam">
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                        <box size="0.05 0.05 0.05" />
+                </geometry>
+                <material name="yellow" />
+                </visual>
+
+                <inertial>
+                        <origin xyz="0 0 0" rpy="0 0 0" />
+                        <mass value="0" />
+                        <inertia ixx="1" ixy="0" ixz="0"
+                                iyy="1" iyz="0" izz="1" />
+                </inertial>
+        </link>cam
+
+
+        <transmission name="trans_joint0_1">
+                <type>transmission_interface/SimpleTransmission</type>
+                <joint name="joint0_1">
+                        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+                </joint>
+                <actuator name="joint0_1_motor">
+                        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+                        <mechanicalReduction>1</mechanicalReduction>
+                </actuator>
+        </transmission>
+        <transmission name="trans_joint1_2">
+                <type>transmission_interface/SimpleTransmission</type>
+                <joint name="joint1_2">
+                        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+                </joint>
+                <actuator name="joint1_2_motor">
+                        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+                        <mechanicalReduction>1</mechanicalReduction>
+                </actuator>
+        </transmission>
+        <transmission name="trans_joint2_3">
+                <type>transmission_interface/SimpleTransmission</type>
+                <joint name="joint2_3">
+                        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+                </joint>
+                <actuator name="joint2_3_motor">
+                        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+                        <mechanicalReduction>1</mechanicalReduction>
+                </actuator>
+        </transmission>
+        <transmission name="trans_joint3_4">
+                <type>transmission_interface/SimpleTransmission</type>
+                <joint name="joint3_4">
+                        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+                </joint>
+                <actuator name="joint3_4_motor">
+                        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+                        <mechanicalReduction>1</mechanicalReduction>
+                </actuator>
+        </transmission>
+        <transmission name="trans_joint4_5">
+                <type>transmission_interface/SimpleTransmission</type>
+                <joint name="joint4_5">
+                        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+                </joint>
+                <actuator name="joint4_5_motor">
+                        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+                        <mechanicalReduction>1</mechanicalReduction>
+                </actuator>
+        </transmission>
+        <transmission name="trans_joint5_eef">
+                <type>transmission_interface/SimpleTransmission</type>
+                <joint name="joint5_eef">
+                        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+                </joint>
+                <actuator name="joint5_eef_motor">
+                        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+                        <mechanicalReduction>1</mechanicalReduction>
+                </actuator>
+        </transmission>
+        <transmission name="trans_eef_finger1">
+                <type>transmission_interface/SimpleTransmission</type>
+                <joint name="base_finger_1">
+                        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+                </joint>
+                <actuator name="base_finger_1_motor">
+                        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+                        <mechanicalReduction>0.5</mechanicalReduction>
+                </actuator>
+        </transmission>
+        <transmission name="trans_eef_finger2">
+                <type>transmission_interface/SimpleTransmission</type>
+                <joint name="base_finger_2">
+                        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+                </joint>
+                <actuator name="base_finger_2_motor">
+                        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+                        <mechanicalReduction>0.5</mechanicalReduction>
+                </actuator>
+        </transmission>
+</robot>
