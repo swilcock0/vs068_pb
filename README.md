@@ -35,3 +35,7 @@ Additionally, for Grasshopper/COMPAS_FAB integration, [these documents](https://
 python -m compas_rhino.install
 ```
 should make compas available to Grasshopper.
+
+
+## Package installation
+`pip install -e .`
