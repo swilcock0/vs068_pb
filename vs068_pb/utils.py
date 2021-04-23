@@ -3,6 +3,7 @@ import time
 from math import degrees, radians
 import pybullet as p
 import vs068_pb.config as config
+from numpy import array, concatenate
 
 '''pyBullet convenience functions'''
 
@@ -161,6 +162,23 @@ def ParamControl(botId, cid):
 
 ''' Helper utils - nicked from caelan/pybullet_planning '''
 
+def matrix_from_quat(cid, quat):
+    return np.array(p.getMatrixFromQuaternion(quat, physicsClientId=cid)).reshape(3, 3)
+
+def check_same(a, b, tol):
+    #print(a)
+    #print(b)
+    flt_a = concatenate(array(a, dtype=object).reshape(-1))
+    flt_b = concatenate(array(b, dtype=object).reshape(-1))
+    
+    same = True
+    
+    for i in range(len(flt_a)):
+        if (flt_a[i] > (flt_b[i] + tol)) or (flt_a[i] < (flt_b[i] - tol)):
+            same = False
+            break
+    return same
+
 def all_between(lower_limits, values, upper_limits):
     ########## FIX
 #    print(lower_limits)
@@ -223,8 +241,9 @@ def get_joint_positions(botId, joint_indices, cid=0):
         positions.append(p.getJointStates(botId, joint_indices, cid)[0])
     return positions
 
-def quick_load_bot():
-    physicsClient = p.connect(p.GUI)
+def quick_load_bot(mode=p.DIRECT):
+    physicsClient = p.connect(mode)
+    p.setAdditionalSearchPath(config.src_fldr)
     startPos = [0,0,0]
     startOrientation = p.getQuaternionFromEuler([0,0,0])
     botId = p.loadURDF(config.urdf, startPos, startOrientation, useFixedBase=1, flags=p.URDF_USE_SELF_COLLISION)

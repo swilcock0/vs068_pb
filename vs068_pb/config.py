@@ -20,6 +20,9 @@ urdf = os.path.join(src_fldr, "vs068_with_gripper_pybullet.urdf")
 
 #################
 
+INF = np.inf
+PI = np.pi
+
 # Params
 ENG_RATE = 30 # Hz
 T_STEP = 1./ENG_RATE
