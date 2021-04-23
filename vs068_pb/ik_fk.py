@@ -1,11 +1,14 @@
+import time
 import pybullet as p
 import numpy as np
 from scipy.spatial.transform import Rotation as R
-from vs068_pb.utils import matrix_from_quat, get_joint_limits, get_distance, get_joint_positions, invert, multiply, all_between
+from vs068_pb.utils import get_length, elapsed_time, randomize, interval_generator, matrix_from_quat, \
+    get_joint_limits, get_min_limits, get_max_limits, get_distance, get_joint_positions, invert, \
+    multiply, all_between
 import vs068_pb.config as config
 from vs068_pb.config import Pose, INF
 import numpy.random as random
-
+from itertools import product, combinations, count, cycle, islice
 if config.IKFAST_AVAILABLE:
     import ikfast_vs068 as ikv
     print("IKFast Imported to ik_fk")
@@ -62,6 +65,12 @@ def getIK_FN():
         def Fn(position=[0,0,0], orientation=[0,0,0,0], sampled=[], cid=0, *args, **kwargs):
             # Swap out for sampled ik, see https://github.com/caelan/pybullet-planning/blob/b280cfc578479309a15a5e4023a1bacf29eb25ee/pybullet_tools/ikfast/ikfast.py#L147
             print(position, orientation, sampled)
+            
+            print("")
+            print("")
+            print("")
+            
+            print(matrix_from_quat(cid, orientation).tolist())
             if sampled:
                 return ikv.get_ik(position, matrix_from_quat(cid, orientation).tolist(), sampled)
             else:
@@ -73,62 +82,65 @@ def getIK_FN():
 
     return Fn
 
+def get_difference_fn(body, joints):
+    def fn(q2, q1):
+        return ((value2 - value1) for value2, value1 in [q2, q1])
+    return fn
+
 #############
     
-#def ikfast_inverse_kinematics(robot, ikfast_info, tool_link, world_from_target,
-#                              fixed_joints=[], max_attempts=INF, max_time=INF,
-#                              norm=INF, max_distance=INF, **kwargs):
-#    assert (max_attempts < INF) or (max_time < INF)
-#    if max_distance is None:
-#        max_distance = INF
-#    #assert is_ik_compiled(ikfast_info)
-#    ikfast = import_ikfast(ikfast_info)
-#    ik_joints = get_ik_joints(robot, ikfast_info, tool_link)
-#    free_joints = joints_from_names(robot, ikfast_info.free_joints)
-#    base_from_ee = get_base_from_ee(robot, ikfast_info, tool_link, world_from_target)
-#    difference_fn = get_difference_fn(robot, ik_joints)
-#    current_conf = get_joint_positions(robot, ik_joints)
-#    current_positions = get_joint_positions(robot, free_joints)
-#
-#    # TODO: handle circular joints
-#    free_deltas = np.array([0. if joint in fixed_joints else max_distance for joint in free_joints])
-#    lower_limits = np.maximum(get_min_limits(robot, free_joints), current_positions - free_deltas)
-#    upper_limits = np.minimum(get_max_limits(robot, free_joints), current_positions + free_deltas)
-#    generator = interval_generator(lower_limits, upper_limits)
-#    if max_attempts < INF:
-#        generator = islice(generator, max_attempts)
-#    start_time = time.time()
-#    for free_positions in generator:
-#        if max_time < elapsed_time(start_time):
-#            break
-#        for conf in randomize(compute_inverse_kinematics(ikfast.get_ik, base_from_ee, free_positions)):
-#            #solution(robot, ik_joints, conf, tool_link, world_from_target)
-#            difference = difference_fn(current_conf, conf)
-#            if not violates_limits(robot, ik_joints, conf) and (get_length(difference, norm=norm) <= max_distance):
-#                #set_joint_positions(robot, ik_joints, conf)
-#                yield conf
-#
-#
-#def closest_inverse_kinematics(robot, ikfast_info, tool_link, world_from_target,
-#                               max_candidates=INF, norm=INF, verbose=True, **kwargs):
-#    start_time = time.time()
-#    ik_joints = get_ik_joints(robot, ikfast_info, tool_link)
-#    current_conf = get_joint_positions(robot, ik_joints)
-#    generator = ikfast_inverse_kinematics(robot, ikfast_info, tool_link, world_from_target, norm=norm, **kwargs)
-#    if max_candidates < INF:
-#        generator = islice(generator, max_candidates)
-#    solutions = list(generator)
-#    # TODO: relative to joint limits
-#    difference_fn = get_difference_fn(robot, ik_joints) # get_distance_fn
-#    #set_joint_positions(robot, ik_joints, closest_conf)
-#    solutions = sorted(solutions, key=lambda q: get_length(difference_fn(q, current_conf), norm=norm))
-#    if verbose:
-#        min_distance = min([INF] + [get_length(difference_fn(q, current_conf), norm=norm) for q in solutions])
-#        print('Identified {} IK solutions with minimum distance of {:.3f} in {:.3f} seconds'.format(
-#            len(solutions), min_distance, elapsed_time(start_time)))
-#    return iter(solutions)
-#
-##############
+def ikfast_ik(robot, fixed_joints=[], max_attempts=INF, max_time=10, norm=INF, max_distance=INF, **kwargs):
+    assert (max_attempts < INF) or (max_time < INF)
+    if max_distance is None:
+        max_distance = INF
+    #assert is_ik_compiled(ikfast_info)
+    ikfast = getIK_FN()
+    ik_joints = config.info.free_joints
+    free_joints = ik_joints
+    base_from_ee = invert(get_link_pose(robot, config.info.ee_link))
+    difference_fn = get_difference_fn(robot, ik_joints)
+    current_conf = get_joint_positions(robot, ik_joints)
+    current_positions = get_joint_positions(robot, free_joints)
+
+    # TODO: handle circular joints
+    free_deltas = np.array([0. if joint in fixed_joints else max_distance for joint in free_joints])
+    lower_limits = np.maximum(get_min_limits(robot, free_joints), current_positions - free_deltas)
+    upper_limits = np.minimum(get_max_limits(robot, free_joints), current_positions + free_deltas)
+    generator = interval_generator(lower_limits, upper_limits)
+    if max_attempts < INF:
+        generator = islice(generator, max_attempts)
+    start_time = time.time()
+    for free_positions in generator:
+        if max_time < elapsed_time(start_time):
+            break
+        for conf in randomize(compute_inverse_kinematics(ikfast, base_from_ee, free_positions)):
+            #solution(robot, ik_joints, conf, tool_link, world_from_target)
+            difference = difference_fn(current_conf, conf)
+            if not violates_limits(robot, ik_joints, conf) and (get_length(difference, norm=norm) <= max_distance):
+                #set_joint_positions(robot, ik_joints, conf)
+                yield conf
+
+
+def closest_inverse_kinematics(robot, max_candidates=INF, norm=INF, verbose=True, **kwargs):
+    start_time = time.time()
+    ik_joints = config.info.free_joints
+    current_conf = get_joint_positions(robot, ik_joints)
+    generator = ikfast_ik(robot, norm=norm, **kwargs)
+    if max_candidates < INF:
+        generator = islice(generator, max_candidates)
+    solutions = list(generator)
+    print(solutions)
+    # TODO: relative to joint limits
+    difference_fn = get_difference_fn(robot, ik_joints) # get_distance_fn
+    #set_joint_positions(robot, ik_joints, closest_conf)
+    solutions = sorted(solutions, key=lambda q: get_length(difference_fn(q, current_conf), norm=norm))
+    if verbose:
+        min_distance = min([INF] + [get_length(difference_fn(q, current_conf), norm=norm) for q in solutions])
+        print('Identified {} IK solutions with minimum distance of {:.3f} in {:.3f} seconds'.format(
+            len(solutions), min_distance, elapsed_time(start_time)))
+    return iter(solutions)
+
+#############
 
 
 def compute_inverse_kinematics(ik_fn, pose, sampled=[]):
@@ -136,6 +148,7 @@ def compute_inverse_kinematics(ik_fn, pose, sampled=[]):
     # TODO : Add botid, cid
     pos = pose[0]
     rot = pose[1]
+
     if sampled:
         # ADD CID AND BOTID
         solutions = ik_fn(list(pos), list(rot), sampled)
@@ -145,6 +158,17 @@ def compute_inverse_kinematics(ik_fn, pose, sampled=[]):
         return []
     return solutions
 
+def get_relative_pose(body, link1, link2=0):
+    world_from_link1 = get_link_pose(body, link1)
+    world_from_link2 = get_link_pose(body, link2)
+    link2_from_link1 = multiply(invert(world_from_link2), world_from_link1)
+    return link2_from_link1
+
+def get_base_from_ee(robot, ikfast_info, tool_link, world_from_target):
+    ee_link = config.info.ee_link
+    tool_from_ee = get_relative_pose(robot, ee_link, tool_link)
+    world_from_base = get_link_pose(robot, 0)
+    return multiply(invert(world_from_base), world_from_target, tool_from_ee)
 
 def get_link_pose(botId, link):
 #    print(botId)

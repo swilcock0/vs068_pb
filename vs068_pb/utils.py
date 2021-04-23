@@ -1,10 +1,12 @@
 import numpy as np
 import time
+import random
 from math import degrees, radians
 import pybullet as p
 import vs068_pb.config as config
 from numpy import array, concatenate
 
+INF = config.INF
 '''pyBullet convenience functions'''
 
 def Disconnect():
@@ -224,22 +226,101 @@ def get_joint_limits(cid=0, botId=0, joint=0):
 
 def get_min_limit(botId, joint):
     # TODO: rename to min_position
-    return get_joint_limits(botId, joint)[0]
+    return get_joint_limits(botId=botId, joint=joint)[0]
 
 def get_min_limits(botId, joints):
-    return [get_min_limit(botId, joint) for joint in joints]
+    return [get_min_limit(botId=botId, joint=joint) for joint in joints]
 
 def get_max_limit(botId, joint):
-    return get_joint_limits(botId, joint)[1]
+    return get_joint_limits(botId=botId, joint=joint)[1]
 
 def get_max_limits(botId, joints):
-    return [get_max_limit(botId, joint) for joint in joints]  
+    return [get_max_limit(botId=botId, joint=joint) for joint in joints]  
 
 def get_joint_positions(botId, joint_indices, cid=0):
     positions = []
     for i in range(len(joint_indices)):
-        positions.append(p.getJointStates(botId, joint_indices, cid)[0])
+        positions.append(p.getJointStates(botId, joint_indices, cid)[0][0])
     return positions
+
+def convex_combination(x, y, w=0.5):
+    return (1-w)*np.array(x) + w*np.array(y)
+
+def uniform_generator(d):
+    while True:
+        yield np.random.uniform(size=d)
+
+def halton_generator(d):
+    import ghalton
+    seed = random.randint(0, 1000)
+    #sequencer = ghalton.Halton(d)
+    sequencer = ghalton.GeneralizedHalton(d, seed)
+    #sequencer.reset()
+    while True:
+        [weights] = sequencer.get(1)
+        yield np.array(weights)
+
+def unit_generator(d, use_halton=True):
+    if use_halton:
+        try:
+            import ghalton
+        except ImportError:
+            print('ghalton is not installed (https://pypi.org/project/ghalton/)')
+            use_halton = False
+    return halton_generator(d) if use_halton else uniform_generator(d)
+
+def interval_generator(lower, upper, **kwargs):
+    assert len(lower) == len(upper)
+    assert np.less_equal(lower, upper).all()
+    if np.equal(lower, upper).all():
+        return iter([lower])
+    return (convex_combination(lower, upper, w=weights) for weights in unit_generator(d=len(lower), **kwargs))
+
+def elapsed_time(start_time):
+    return time.time() - start_time
+
+def safe_zip(sequence1, sequence2): # TODO: *args
+    sequence1, sequence2 = list(sequence1), list(sequence2)
+    assert len(sequence1) == len(sequence2)
+    return list(zip(sequence1, sequence2))
+
+def get_pairs(sequence):
+    # TODO: lazy version
+    sequence = list(sequence)
+    return safe_zip(sequence[:-1], sequence[1:])
+
+def get_wrapped_pairs(sequence):
+    # TODO: lazy version
+    sequence = list(sequence)
+    # zip(sequence, sequence[-1:] + sequence[:-1])
+    return safe_zip(sequence, sequence[1:] + sequence[:1])
+
+def clip(value, min_value=-INF, max_value=+INF):
+    return min(max(min_value, value), max_value)
+
+def randomize(iterable): # TODO: bisect
+    sequence = list(iterable)
+    random.shuffle(sequence)
+    return sequence
+
+def get_random_seed():
+    return random.getstate()[1][0]
+
+def get_numpy_seed():
+    return np.random.get_state()[1][0]
+
+def set_random_seed(seed):
+    if seed is not None:
+        random.seed(seed)
+
+def wrap_numpy_seed(seed):
+    return seed % (2**32)
+
+def set_numpy_seed(seed):
+    # These generators are different and independent
+    if seed is not None:
+        np.random.seed(wrap_numpy_seed(seed))
+        #print('Seed:', seed)
 
 def quick_load_bot(mode=p.DIRECT):
     physicsClient = p.connect(mode)

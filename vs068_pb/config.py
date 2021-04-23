@@ -1,6 +1,7 @@
 import os
 import tkinter as tk
 from collections import namedtuple
+import numpy as np
 
 try:
     import ikfast_vs068 as ikv
