@@ -1,118 +1,15 @@
 import pybullet as p
 import time
 import pybullet_data
-import os
-import tkinter as tk
 from math import degrees, radians
-import numpy as np
+#import numpy as np
 #from numpy.linalg import inv
 #from scipy.spatial.transform import Rotation as R
 
-import vs068_pb.ik_fk
-
-# Get screen dimensions
-root = tk.Tk()
-screen_width = root.winfo_screenwidth()
-screen_height = root.winfo_screenheight()
-
-# Data folders and locations
-src_fldr = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', "resources")
-urdf = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', "resources", "vs068_with_gripper_pybullet.urdf")  
-
-# Params
-ENG_RATE = 30 # Hz
-T_STEP = 1./ENG_RATE
-CAMERA_RATE = 1 # Hz
-MOTION_RATE = 0.5 # Hz
-LINE_LIFE = 5 # s
-prev_pose = [0,0,0]
-a = 0
-inc = 6/(ENG_RATE/MOTION_RATE)
-DEBUG = True
-CAMERA_ACTIVATED = True
-EEF_ID=8 # Naughty
-SIM_T = 0.0
-PRINT_SIM_T = False
-
-#################
-
-''' Motion planning '''
-
-# TODO (swilcock0) : Write and test FK function
-# TODO (swilcock0) : Modify ik generator fn
-# TODO (swilcock0) : Write an IK sampler function to get a closest fit
-# TODO (swilcock0) : Write an RRT* motion planner
-# TODO (swilcock0) : Implement collision detection. See caelan/pybullet_planning for example
-
-def getFK_FN():
-    ''' Get the forwards kinematics function '''
-    if IKFAST_AVAILABLE:
-        def Fn(joint_angles, *args, **kwargs):
-            # TODO (swilcock0) : Test
-            print(ikv.get_fk(joint_angles))  
-    else:
-        def Fn(joint_angles=[0,0,0], botId=0, cid=0):
-            # TODO (swilcock0) : Move this to a class var
-            joint_indices = []
-            for joint in range(p.getNumJoints(botId)):
-                if joint[2] == p.JOINT_REVOLUTE or joint[2] == p.JOINT_PRISMATIC:
-                    joint_indices.append(joint[0])
-            
-            p.resetJointStatesMultiDof(botId, joint_indices, joint_angles, physicsClientId=cid)
-
-    return Fn
-
-def getIK_FN():
-    ''' Get the inverse kinematics function (depending on whether IKFast is built and available this may be analytical, req. VSC++ on Windows) '''
-    if IKFAST_AVAILABLE:
-        def Fn(position=[0,0,0], orientation=[0,0,0,0], *args, **kwargs):
-            # TODO (swilcock0) : the ikfast takes orientation as a rotation matrix!
-            print(ikv.get_ik(position, np.reshape(p.getMatrixFromQuaternion(orientation), [3,3]).tolist()))   
-    else:
-        def Fn(position=[0,0,0], orientation=[1,0,0,0], botId=0, cid=0):
-            # TODO (swilcock0) : Add joint limits
-            print(p.calculateInverseKinematics(botId, EEF_ID, position, orientation, physicsClientId=cid))
-
-    return Fn
-
-# def get_ik_generator(robot, tool_pose, track_limits=False, prev_free_list=[]):
-#     # 
-#     world_from_base = get_link_pose(robot, link_from_name(robot, BASE_FRAME))
-#     base_from_tool = multiply(invert(world_from_base), tool_pose)
-#     base_from_ik = multiply(base_from_tool, get_tool_from_ik(robot))
-#     sampled_limits = get_ik_limits(robot, joint_from_name(robot, *TRACK_JOINT), track_limits)
-#     while True:
-#         if not prev_free_list:
-#             sampled_values = [random.uniform(*sampled_limits)]
-#         else:
-#             sampled_values = prev_free_list
-#         ik_joints = get_track_arm_joints(robot)
-#         confs = compute_inverse_kinematics(get_ik, base_from_ik, sampled_values)
-#         yield [q for q in confs if not violates_limits(robot, ik_joints, q)]
-
-# def get_tool_from_ik(robot):
-#     world_from_tool = get_link_pose(robot, link_from_name(robot, TOOL_FRAME))
-#     world_from_ik = get_link_pose(robot, link_from_name(robot, IK_FRAME))
-#     # tool from the bare flange (6th axis)
-#     return multiply(invert(world_from_tool), world_from_ik)
+import vs068_pb.config as config
+#import vs068_pb.ik_fk as ik_fk
 
 
-# def sample_tool_ik(robot, tool_pose, max_attempts=10, closest_only=False, get_all=False, prev_free_list=[], **kwargs):
-#     generator = get_ik_generator(robot, tool_pose, prev_free_list=prev_free_list, **kwargs)
-#     ik_joints = get_movable_joints(robot)
-#     for _ in range(max_attempts):
-#         try:
-#             solutions = next(generator)
-#             if closest_only and solutions:
-#                 current_conf = get_joint_positions(robot, ik_joints)
-#                 solutions = [min(solutions, key=lambda conf: get_distance(current_conf, conf))]
-#             solutions = list(filter(lambda conf: not violates_limits(robot, ik_joints, conf), solutions))
-#             return solutions if get_all else select_solution(robot, ik_joints, solutions, **kwargs)
-#         except StopIteration:
-#             break
-#     return None
-
-#################
 
 ''' Some "beauty" functions '''
 def SetupParams(botId, cid):
@@ -133,7 +30,7 @@ def SetupParams(botId, cid):
     # Round the pose to 2s.f.
     pose_rounded = tuple([round(x,2) if isinstance(x, float) else x for x in p.getLinkState(botId, 8)[0]])
 
-    if DEBUG: 
+    if config.DEBUG: 
         # Add text for EEF pose and line
         output_params['posetext'] = p.addUserDebugText(str(pose_rounded), p.getLinkState(botId, 11)[0], textSize=1, textColorRGB=[0,0,0], physicsClientId=cid)
     
@@ -142,21 +39,19 @@ def SetupParams(botId, cid):
 def DrawEEFLine(botId, cid):
     ''' Draw the line at the EEF '''
     # TODO (swilcock0): Shift to a class structure and do away with global variables
-    global prev_pose
-    global params
     
     # Get current pose
-    current_pose = p.getLinkState(botId, EEF_ID)[0]
+    current_pose = p.getLinkState(botId, config.EEF_ID)[0]
     # Draw a line from the previous pose
-    p.addUserDebugLine(lineFromXYZ=prev_pose, lineToXYZ=current_pose, physicsClientId=cid, lifeTime=LINE_LIFE, lineColorRGB=[1,0,0], lineWidth=2)
+    p.addUserDebugLine(lineFromXYZ=config.prev_pose, lineToXYZ=current_pose, physicsClientId=cid, lifeTime=config.LINE_LIFE, lineColorRGB=[1,0,0], lineWidth=2)
     
     # If it's changed significantly, update text
     # TODO (swilcock0) : Add a rounding function for tuples
-    if tuple([round(x,2) if isinstance(x, float) else x for x in prev_pose]) != tuple([round(x,2) if isinstance(x, float) else x for x in current_pose]):
+    if tuple([round(x,2) if isinstance(x, float) else x for x in config.prev_pose]) != tuple([round(x,2) if isinstance(x, float) else x for x in current_pose]):
         pose_rounded = tuple([round(x,2) if isinstance(x, float) else x for x in current_pose])
-        params['posetext'] = p.addUserDebugText(str(pose_rounded), p.getLinkState(botId, 11)[0], textSize=1, textColorRGB=[0,0,0], replaceItemUniqueId=params['posetext'], physicsClientId=cid)
+        config.params['posetext'] = p.addUserDebugText(str(pose_rounded), p.getLinkState(botId, 11)[0], textSize=1, textColorRGB=[0,0,0], replaceItemUniqueId=config.params['posetext'], physicsClientId=cid)
     
-    prev_pose = current_pose
+    config.prev_pose = current_pose
   
 def MiscControl(botId, cid):
     ''' Move some joints along a determined path '''
@@ -180,16 +75,18 @@ def ParamControl(botId, cid):
     position_array = []
     
     # Run through the parameters
-    for key in params:
+    for key in config.params:
         if str(key).isalpha() == False: # Ensure the param is a slider (with a numeric key)
             control_array.append(key)
-            position_array.append(radians(p.readUserDebugParameter(params[key], cid))) # Build the joint position array
+            position_array.append(radians(p.readUserDebugParameter(config.params[key], cid))) # Build the joint position array
     # Control the joints
     p.setJointMotorControlArray(botId, control_array, p.POSITION_CONTROL, position_array, positionGains=len(control_array)*[0.1])
 
 
 ####################
 '''pyBullet convenience functions'''
+
+# TODO (swilcock0) : Move to utils?
 
 def Disconnect():
     ''' Disconnect any and all instances of bullet '''
@@ -201,21 +98,20 @@ def Disconnect():
 
 def Step(steps = 10000, sleep = 1, cid=0, botId=0):
     ''' Step simulation steps times. If sleep == 0, no wait between steps '''
-    global SIM_T
     controltype = 1
-    buttonsave = p.readUserDebugParameter(params['button'], cid)
+    config.buttonsave = p.readUserDebugParameter(config.params['button'], cid)
     camera_ctr = 0
             
     for i in range(0, steps):
         p.stepSimulation(cid)
         
         if sleep == 1:
-            time.sleep(T_STEP)
+            time.sleep(config.T_STEP)
         
         # Check for the button presses and flip the control type if so (1<->0)
-        if p.readUserDebugParameter(params['button'], cid) > buttonsave:
+        if p.readUserDebugParameter(config.params['button'], cid) > config.buttonsave:
             controltype = abs(controltype - 1)
-            buttonsave = p.readUserDebugParameter(params['button'], cid)
+            config.buttonsave = p.readUserDebugParameter(config.params['button'], cid)
              
         # Select the controller type based on button history
         if controltype == 0:
@@ -224,22 +120,22 @@ def Step(steps = 10000, sleep = 1, cid=0, botId=0):
             MiscControl(botId, cid)
         
         camera_ctr += 1
-        if camera_ctr == ENG_RATE/CAMERA_RATE:
+        if camera_ctr == config.ENG_RATE/config.CAMERA_RATE:
             Camera(cid, botId, 11)
             camera_ctr = 0
         
-        SIM_T += T_STEP
-        if PRINT_SIM_T:
-            print(SIM_T)
+        config.SIM_T += config.T_STEP
+        if config.PRINT_SIM_T:
+            print(config.SIM_T)
                 
-        # Add the line if DEBUG is True in params at top
-        if DEBUG:
+        # Add the line if DEBUG is True in config.params at top
+        if config.DEBUG:
             DrawEEFLine(botId, cid)
-
+            
 def Camera(cid, botId, linkID, distance=0.2):
     ''' Rig a camera to a link '''
-    # Turn off using params at top
-    if not CAMERA_ACTIVATED:
+    # Turn off using config.params at top
+    if not config.CAMERA_ACTIVATED:
         return
     
     # Get joint pose
@@ -278,21 +174,19 @@ def Camera(cid, botId, linkID, distance=0.2):
 #################
             
 def Start():
-    ''' Main program '''                        
-    global params
-    
+    ''' Main program '''                           
     Disconnect() # Ensure any stray servers are shut down
-    gui_options = "--width="+str(screen_width)+" --height="+str(screen_height) # Setup screen width/height string
+    gui_options = "--width="+str(config.screen_width)+" --height="+str(config.screen_height) # Setup screen width/height string
     physicsClient = p.connect(p.GUI, options= gui_options) # Connect to a physics client 
         
-    # Set engine params
-    p.setPhysicsEngineParameter(fixedTimeStep = T_STEP, 
+    # Set engine config.params
+    p.setPhysicsEngineParameter(fixedTimeStep = config.T_STEP, 
                                 numSolverIterations = 50, 
                                 numSubSteps = 4)
     p.setGravity(0,0,-9.81)
 
     # Set data folders
-    p.setAdditionalSearchPath(src_fldr)
+    p.setAdditionalSearchPath(config.src_fldr)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())  
     
     # Some debug visualiser options
@@ -312,10 +206,10 @@ def Start():
     startOrientation = p.getQuaternionFromEuler([0,0,0])
     
     # Load the robot
-    botId = p.loadURDF(urdf, startPos, startOrientation, useFixedBase=1, flags=p.URDF_USE_SELF_COLLISION)
+    botId = p.loadURDF(config.urdf, startPos, startOrientation, useFixedBase=1, flags=p.URDF_USE_SELF_COLLISION)
     
     # Add the parameter sliders etc
-    params = SetupParams(botId, physicsClient)
+    config.params = SetupParams(botId, physicsClient)
     
     # Change colour of base box
     #p.changeVisualShape(botId, 0, rgbaColor=[0.0, 0.0, 1, 0.5])

@@ -1,0 +1,52 @@
+import os
+import tkinter as tk
+
+
+try:
+    import ikfast_vs068 as ikv
+    IKFAST_AVAILABLE = True
+except ModuleNotFoundError:
+    IKFAST_AVAILABLE = False
+
+# Get screen dimensions
+root = tk.Tk()
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight()
+
+# Data folders and locations
+src_fldr = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', "resources")
+urdf = os.path.join(src_fldr, "vs068_with_gripper_pybullet.urdf")  
+
+
+#################
+
+# Params
+ENG_RATE = 30 # Hz
+T_STEP = 1./ENG_RATE
+CAMERA_RATE = 1 # Hz
+MOTION_RATE = 0.5 # Hz
+LINE_LIFE = 5 # s
+prev_pose = [0,0,0]
+a = 0
+inc = 6/(ENG_RATE/MOTION_RATE)
+DEBUG = True
+CAMERA_ACTIVATED = True
+EEF_ID=8 # Naughty
+SIM_T = 0.0
+PRINT_SIM_T = False
+
+
+
+def set_IKFAST(onoff=True):
+    global IKFAST_AVAILABLE
+    IKFAST_AVAILABLE=onoff
+    if IKFAST_AVAILABLE:
+        try:
+            import ikfast_vs068 as ikv
+            IKFAST_AVAILABLE = True
+        except ModuleNotFoundError:
+            IKFAST_AVAILABLE = False
+            
+def get_IKFAST():
+    global IKFAST_AVAILABLE
+    return IKFAST_AVAILABLE
