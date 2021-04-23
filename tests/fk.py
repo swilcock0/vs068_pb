@@ -2,10 +2,11 @@
 # TODO (swilcock0) : Add unittests to assert similarity
 # TODO (swilcock0) : Add comments
 
-from vs068-pb.ik_fk import getFK_FN, set_IKFAST
+from vs068_pb.ik_fk import getFK_FN
+from vs068_pb.config import set_IKFAST
 import pybullet as p
 import os
-from vs068-pb.arm_more_advanced import Disconnect
+from vs068_pb.utils import Disconnect
 from numpy import array, concatenate
 
 Disconnect()
