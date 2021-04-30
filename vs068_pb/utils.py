@@ -7,6 +7,7 @@ import vs068_pb.config as config
 from numpy import array, concatenate
 import sys
 import os
+import pybullet_data
 
 INF = config.INF
 '''pyBullet convenience functions'''
@@ -186,7 +187,7 @@ def Camera(cid, botId, linkID, distance=0.2):
                         fov=45.0,
                         aspect=1.0,
                         nearVal=0.1,
-                        farVal=3.1)
+                        farVal=6.1)
 
     # Call the camera
     width, height, rgbImg, depthImg, segImg = p.getCameraImage(
@@ -504,9 +505,14 @@ def set_joint_position(cid, body, joint, value):
 #     p.resetJointState(body, joint, targetVelocity=velocity, physicsClientId=CLIENT) # TODO: targetValue required
 
 def set_joint_states(cid, body, joints, positions, velocities):
-    assert len(joints) == len(positions) == len(velocities)
-    for joint, position, velocity in zip(joints, positions, velocities):
-        set_joint_state(cid, body, joint, position, velocity)
+    try:
+        assert len(joints) == len(positions) == len(velocities)
+        for joint, position, velocity in zip(joints, positions, velocities):
+            set_joint_state(cid, body, joint, position, velocity)
+
+            #print(joints, positions)
+    except:
+        print("Error")
 
 def set_joint_positions(cid, body, joints, values):
     for joint, value in safe_zip(joints, values):
@@ -521,3 +527,102 @@ def quick_load_bot(mode=p.DIRECT):
         startOrientation = p.getQuaternionFromEuler([0,0,0])
         botId = p.loadURDF(config.urdf, startPos, startOrientation, useFixedBase=1, flags=p.URDF_USE_SELF_COLLISION)
         return botId, physicsClient
+
+
+botId, cid = quick_load_bot()
+config.LINK_IDS = {}
+for i in range(p.getNumJoints(botId)):
+        jointInfo = (p.getJointInfo(botId, i))
+
+        config.LINK_IDS[jointInfo[1].decode("UTF-8")] = jointInfo[0]
+p.disconnect(cid)
+
+botId, cid = quick_load_bot()
+config.LINK_IDS = {}
+for i in range(p.getNumJoints(botId)):
+        jointInfo = (p.getJointInfo(botId, i))
+
+        config.LINK_IDS[jointInfo[1].decode("UTF-8")] = jointInfo[0]
+p.disconnect(cid)
+
+
+def getLinkFromName(name):
+    return config.LINK_IDS.get(name, None)
+
+
+config.NEVER_COLLIDE_NUMS = []
+for pair in config.NEVER_COLLIDE_NAMES:
+    config.NEVER_COLLIDE_NUMS.append([getLinkFromName(pair[0]), getLinkFromName(pair[1])])
+
+#print(config.NEVER_COLLIDE_NAMES)
+#print(config.NEVER_COLLIDE_NUMS)
+
+
+def drawAABB(aabbMin, aabbMax):
+    f = [aabbMin[0], aabbMin[1], aabbMin[2]]
+    t = [aabbMax[0], aabbMin[1], aabbMin[2]]
+    p.addUserDebugLine(f, t, [1, 0, 0])
+    f = [aabbMin[0], aabbMin[1], aabbMin[2]]
+    t = [aabbMin[0], aabbMax[1], aabbMin[2]]
+    p.addUserDebugLine(f, t, [0, 1, 0])
+    f = [aabbMin[0], aabbMin[1], aabbMin[2]]
+    t = [aabbMin[0], aabbMin[1], aabbMax[2]]
+    p.addUserDebugLine(f, t, [0, 0, 1])
+
+    f = [aabbMin[0], aabbMin[1], aabbMax[2]]
+    t = [aabbMin[0], aabbMax[1], aabbMax[2]]
+    p.addUserDebugLine(f, t, [1, 1, 1])
+
+    f = [aabbMin[0], aabbMin[1], aabbMax[2]]
+    t = [aabbMax[0], aabbMin[1], aabbMax[2]]
+    p.addUserDebugLine(f, t, [1, 1, 1])
+
+    f = [aabbMax[0], aabbMin[1], aabbMin[2]]
+    t = [aabbMax[0], aabbMin[1], aabbMax[2]]
+    p.addUserDebugLine(f, t, [1, 1, 1])
+
+    f = [aabbMax[0], aabbMin[1], aabbMin[2]]
+    t = [aabbMax[0], aabbMax[1], aabbMin[2]]
+    p.addUserDebugLine(f, t, [1, 1, 1])
+
+    f = [aabbMax[0], aabbMax[1], aabbMin[2]]
+    t = [aabbMin[0], aabbMax[1], aabbMin[2]]
+    p.addUserDebugLine(f, t, [1, 1, 1])
+
+    f = [aabbMin[0], aabbMax[1], aabbMin[2]]
+    t = [aabbMin[0], aabbMax[1], aabbMax[2]]
+    p.addUserDebugLine(f, t, [1, 1, 1])
+
+    f = [aabbMax[0], aabbMax[1], aabbMax[2]]
+    t = [aabbMin[0], aabbMax[1], aabbMax[2]]
+    p.addUserDebugLine(f, t, [1.0, 0.5, 0.5])
+    f = [aabbMax[0], aabbMax[1], aabbMax[2]]
+    t = [aabbMax[0], aabbMin[1], aabbMax[2]]
+    p.addUserDebugLine(f, t, [1, 1, 1])
+    f = [aabbMax[0], aabbMax[1], aabbMax[2]]
+    t = [aabbMax[0], aabbMax[1], aabbMin[2]]
+    p.addUserDebugLine(f, t, [1, 1, 1])
+
+def drawJointAABB(joint, cid=0, botId=0):
+    aabb = p.getAABB(botId, joint, cid)
+    
+    drawAABB(aabb[0], aabb[1])
+
+def checkAllowedContacts(conf, cid=0, botId=0):
+    set_joint_states(cid, botId, config.info.free_joints, conf, [0]*6)
+    p.stepSimulation(cid)
+
+    allowedContacts = True
+
+    for contact in (p.getContactPoints(physicsClientId=cid)):
+        if ([contact[3], contact[4]] not in config.NEVER_COLLIDE_NUMS):
+            allowedContacts = False
+            
+            if config.DEBUG:
+                print(contact)
+
+    return allowedContacts
+
+def loadFloor(cid=0):
+    p.setAdditionalSearchPath(pybullet_data.getDataPath())
+    planeId = p.loadURDF("plane.urdf", physicsClientId=cid)

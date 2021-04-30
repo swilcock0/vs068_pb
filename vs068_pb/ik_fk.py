@@ -5,7 +5,8 @@ from scipy.spatial.transform import Rotation as R
 from vs068_pb.utils import get_length, elapsed_time, randomize, interval_generator, matrix_from_quat, \
     get_joint_limits, get_min_limits, get_max_limits, get_distance, get_joint_positions, invert, \
     multiply, all_between, get_sample_fn, get_custom_limits, set_joint_states, euler_from_quat, quat_from_euler, \
-    uniform_generator, Pose, Point, Euler, get_modded_pose_generator
+    uniform_generator, Pose, Point, Euler, get_modded_pose_generator, save_state, restore_state, drawJointAABB, \
+        checkAllowedContacts, quick_load_bot
 import vs068_pb.config as config
 from vs068_pb.config import INF
 import numpy.random as random
@@ -131,12 +132,25 @@ def violates_limits(cid, botId, joint_indices, conf):
 #     else:
 #         return random.choice(solutions)
 
-def sample_ik(cid, robot, pose, attempts=100):
-    gen_pose = get_modded_pose_generator(pose, epsilon=config.CART_TOL, angle=config.ANGL_TOL)
+def get_valid_ik(pose, cid=0, botId=0, validate=True, **kwargs):
+    #botId, cid = quick_load_bot()
+    if config.DEBUG:
+        print("POSE : {}".format(pose))
+    solutions = sample_ik(cid, botId, pose, **kwargs)
+    if validate:
+        solutions = prune_invalid_poses(solutions, cid, botId,  **kwargs)
+
+    return solutions
+
+def sample_ik(cid, robot, pose, attempts=100, num_candidates=INF, **kwargs):
+    gen_pose = get_modded_pose_generator(pose, epsilon=config.CART_TOL, angle=config.ANGL_TOL, **kwargs)
     solutions = []
     ikfast = getIK_FN()
 
     start_time = time.time()
+    if num_candidates != INF:
+        attempts = 99999
+
     for i in range(int(attempts)):
         pose_test = next(gen_pose)
 
@@ -144,13 +158,18 @@ def sample_ik(cid, robot, pose, attempts=100):
         if ik_result:
             for conf in ik_result:
                 solutions.append(conf)
+            
+            if num_candidates == INF or len(solutions) > num_candidates:
+                break
+
     if config.DEBUG:
         print("{} solutions found in {} seconds.".format(len(solutions), time.time() - start_time))
     return solutions
 
-def prune_invalid_poses(poses, cid=0, botId=0):
+def prune_invalid_poses(poses, cid=0, botId=0, **kwargs):
     valid = []
     for i in range(len(poses)):
+        # TODO (swilcock0) : Does this need checking??
         if violates_limits(cid, botId, config.info.free_joints, poses[i]) == False:
             valid.append(poses[i])
     if valid == []:
@@ -158,8 +177,17 @@ def prune_invalid_poses(poses, cid=0, botId=0):
             print("No valid poses found within joint limits")
         return []
     else:
+        valid_coll = []
+        state_init = save_state(cid)
+
+        for i in range(len(valid)):
+            if checkAllowedContacts(valid[i], cid, botId):
+                valid_coll.append(valid[i])
+            
         if config.DEBUG:
-            print("{} valid poses found.".format(len(valid)))
-        return valid
+            print("{} valid poses found.".format(len(valid_coll)))
+    
+        restore_state(state_init, cid)
+        return valid_coll
 
 #################
