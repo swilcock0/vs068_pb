@@ -2,6 +2,7 @@ import os
 import tkinter as tk
 from collections import namedtuple
 import numpy as np
+from math import radians
 
 try:
     import ikfast_vs068 as ikv
@@ -39,10 +40,15 @@ EEF_ID=8 # Naughty
 SIM_T = 0.0
 PRINT_SIM_T = False
 
+CART_TOL = 0.005
+ANGL_TOL = radians(2)
+
 IKFastInfo = namedtuple('IKFastInfo', ['module_name', 'base_link', 'ee_link', 'free_joints'])
 info = IKFastInfo(module_name='vs068_ikfast', base_link=0, ee_link=8, free_joints=[2, 3, 4, 5, 6, 7])
 
 Pose = namedtuple('Pose', ['position', 'orientation'])
+
+
 
 def set_IKFAST(onoff=True):
     global IKFAST_AVAILABLE
