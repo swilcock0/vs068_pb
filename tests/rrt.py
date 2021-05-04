@@ -12,7 +12,7 @@ goal =  [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 
 #pr = cProfile.Profile()
 #pr.enable()
-path = rrt((0.0, 0.0, 0.0, 0.0, 0.0, 0.0), goal, n_it = 1000, time_limit = 10.0, visualise=-1)
+path = rrt((0.0, 0.0, 0.0, 0.0, 0.0, 0.0), goal, n_it = 1000, time_limit = 10.0, visualise=-1, tool_space=False)
 #pr.disable()
 #print(path)
 #s = io.StringIO()

@@ -19,7 +19,7 @@
 import pybullet as p
 from vs068_pb.ik_fk import get_valid_ik, getFK_FN
 from vs068_pb.utils import quick_load_bot, save_state, restore_state, get_delta_pose_generator, argmin, get_distance, set_joint_states, \
-    interval_generator, sample_line, get_difference, Disconnect, loadFloor, randomize, get_pose_distance
+    interval_generator, sample_line, get_difference, Disconnect, loadFloor, randomize, get_pose_distance, uniform_generator
 import vs068_pb.config as config
 from math import radians, degrees
 import time
@@ -110,14 +110,14 @@ def rrt(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit 
     extend_fn, roadmap = get_extend_fn()
 
     start_time = time.time()
-    tolerance = 0.1
     fk = getFK_FN()
     desired_fk = fk(desired_conf)
     nodes = [TreeNode(current_conf)]
     np.random.seed(int(time.time()))
-    step = 0.5
+    step = 0.01
     closest_dist = 999
     found = False
+    greedy_prob = 0.2
 
     #if tool_space and isinstance(tolerance, float):
     #    tolerance = [tolerance]*2
@@ -155,8 +155,16 @@ def rrt(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit 
 
     dist_fun = get_dist_fn()
 
-    generator = interval_generator(config.lower_lims, config.upper_lims, use_halton=False)
-    #generator = get_delta_pose_generator(epsilon=-1, angle=radians(180)) # For tool space planning
+    generator = interval_generator(config.lower_lims, config.upper_lims, use_halton=True)
+
+    # Greedy generator
+    goal_region_fraction = 0.05 # Proportion of joint range each way
+    goal_lim_range = [config.upper_lims[i] - config.lower_lims[i] for i in range(len(config.lower_lims))]
+    goal_lower_lims = [desired_conf[i] - goal_lim_range[i]*goal_region_fraction for i in range(len(config.lower_lims))]
+    goal_upper_lims = [desired_conf[i] + goal_lim_range[i]*goal_region_fraction for i in range(len(config.lower_lims))]
+    generator_goal = interval_generator(goal_lower_lims, goal_upper_lims, use_halton=True)
+
+    rand_num = uniform_generator(1)
 
     for counter in range(int(n_it)):
         # Don't go on for too long
@@ -165,7 +173,10 @@ def rrt(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit 
             print("RRT: Timed out at {} seconds!".format(elapsed))
             break
 
-        new_conf = next(generator)
+        if next(rand_num)[0] < greedy_prob or counter == 0:
+            new_conf = next(generator_goal)
+        else:
+            new_conf = next(generator)
         
         nodes_select = randomize(nodes)[:min(500, len(nodes))]
         
