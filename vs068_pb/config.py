@@ -36,6 +36,7 @@ prev_pose = [0,0,0]
 a = 0
 inc = 6/(ENG_RATE/MOTION_RATE)
 DEBUG = True
+VERBOSE = False
 CAMERA_ACTIVATED = True
 EEF_ID=8 # Naughty
 SIM_T = 0.0
@@ -43,6 +44,8 @@ PRINT_SIM_T = False
 
 CART_TOL = 0.005
 ANGL_TOL = radians(1)
+lower_lims = [-2.9671, -1.74533, -2.0944, -4.71239, -2.0944, -3.1]
+upper_lims=[2.9671, 2.35619, 2.6529, 4.71239, 2.0944, 3.1]
 
 IKFastInfo = namedtuple('IKFastInfo', ['module_name', 'base_link', 'ee_link', 'free_joints'])
 info = IKFastInfo(module_name='vs068_ikfast', base_link=0, ee_link=8, free_joints=[2, 3, 4, 5, 6, 7])
@@ -73,3 +76,4 @@ def set_IKFAST(onoff=True):
 def get_IKFAST():
     global IKFAST_AVAILABLE
     return IKFAST_AVAILABLE
+

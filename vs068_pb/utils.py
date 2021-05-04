@@ -2,6 +2,7 @@ import numpy as np
 import time
 import random
 from math import degrees, radians
+import math
 import pybullet as p
 import vs068_pb.config as config
 from numpy import array, concatenate
@@ -385,9 +386,25 @@ def get_joint_positions(botId, joint_indices, cid=0):
 def get_delta_pose_generator(epsilon=0.1, angle=np.pi/6):
     lower = [-epsilon]*3 + [-angle]*3
     upper = [epsilon]*3 + [angle]*3
+
+    if epsilon == -1:
+        lower[:3] = [-1.2, -1.2, 0]
+        upper[:3] = [1.2, 1.2, 1.5]
+
     for [x, y, z, roll, pitch, yaw] in interval_generator(lower, upper): # halton?
         pose = Pose(point=[x,y,z], euler=Euler(roll=roll, pitch=pitch, yaw=yaw))
         yield pose
+
+def sample_line(segment, step_size=2e-2):
+    (q1, q2) = segment
+    diff = get_delta(q1, q2)
+    dist = np.linalg.norm(diff)
+    for l in np.arange(0., dist, step_size):
+        yield tuple(np.array(q1) + l * diff / dist)
+    yield q2
+
+def get_delta(q1, q2):
+    return np.array(q2) - np.array(q1)
 
 def get_modded_pose_generator(pose_base, epsilon=0.1, angle=np.pi/6):
     lower = [-epsilon]*3 + [-angle]*3
@@ -505,6 +522,7 @@ def set_joint_position(cid, body, joint, value):
 #     p.resetJointState(body, joint, targetVelocity=velocity, physicsClientId=CLIENT) # TODO: targetValue required
 
 def set_joint_states(cid, body, joints, positions, velocities):
+    #print(joints, positions)
     try:
         assert len(joints) == len(positions) == len(velocities)
         for joint, position, velocity in zip(joints, positions, velocities):
@@ -519,23 +537,35 @@ def set_joint_positions(cid, body, joints, values):
         set_joint_position(cid, body, joint, value)
 
 
-def quick_load_bot(mode=p.DIRECT):
+def quick_load_bot(mode=p.DIRECT, physicsClient=-1):
     with HideOutput():
-        physicsClient = p.connect(mode)
+        if physicsClient == -1:
+            physicsClient = p.connect(mode)
         p.setAdditionalSearchPath(config.src_fldr)
         startPos = [0,0,0]
         startOrientation = p.getQuaternionFromEuler([0,0,0])
         botId = p.loadURDF(config.urdf, startPos, startOrientation, useFixedBase=1, flags=p.URDF_USE_SELF_COLLISION)
+        
         return botId, physicsClient
 
+def irange(start, stop=None, step=1):  # np.arange
+    if stop is None:
+        stop = start
+        start = 0
+    while start < stop:
+        yield start
+        start += step
 
-botId, cid = quick_load_bot()
-config.LINK_IDS = {}
-for i in range(p.getNumJoints(botId)):
-        jointInfo = (p.getJointInfo(botId, i))
 
-        config.LINK_IDS[jointInfo[1].decode("UTF-8")] = jointInfo[0]
-p.disconnect(cid)
+def negate(test):
+    return lambda *args, **kwargs: not test(*args, **kwargs)
+
+
+def argmin(function, sequence):
+    # TODO: use min
+    values = list(sequence)
+    scores = [function(x) for x in values]
+    return values[scores.index(min(scores))], min(scores)
 
 botId, cid = quick_load_bot()
 config.LINK_IDS = {}
