@@ -19,7 +19,7 @@
 import pybullet as p
 from vs068_pb.ik_fk import get_valid_ik, getFK_FN
 from vs068_pb.utils import quick_load_bot, save_state, restore_state, get_delta_pose_generator, argmin, get_distance, set_joint_states, \
-    interval_generator, sample_line, get_difference, Disconnect, loadFloor, randomize, get_pose_distance, uniform_generator
+    interval_generator, sample_line, get_difference, Disconnect, loadFloor, randomize, get_pose_distance, uniform_generator, less_than_tol
 import vs068_pb.config as config
 from math import radians, degrees
 import time
@@ -117,10 +117,10 @@ def rrt(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit 
     step = 0.01
     closest_dist = 999
     found = False
-    greedy_prob = 0.2
+    greedy_prob = 0.3
 
-    #if tool_space and isinstance(tolerance, float):
-    #    tolerance = [tolerance]*2
+    if tool_space and isinstance(tolerance, (int, float)):
+        tolerance = [tolerance]*2
 
     def get_dist_fn():
         if tool_space:
@@ -142,7 +142,7 @@ def rrt(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit 
                     test_pose = fk(node_b)
 
                 distance = get_pose_distance(node_a.pose, test_pose)
-                return distance[0] #2*distance[0] + distance[1]
+                return distance #2*distance[0] + distance[1]
         else:
             def fn(conf_a, conf_b):
                 if isinstance(conf_a, TreeNode):
@@ -158,7 +158,7 @@ def rrt(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit 
     generator = interval_generator(config.lower_lims, config.upper_lims, use_halton=True)
 
     # Greedy generator
-    goal_region_fraction = 0.05 # Proportion of joint range each way
+    goal_region_fraction = 0.02 # Proportion of joint range each way
     goal_lim_range = [config.upper_lims[i] - config.lower_lims[i] for i in range(len(config.lower_lims))]
     goal_lower_lims = [desired_conf[i] - goal_lim_range[i]*goal_region_fraction for i in range(len(config.lower_lims))]
     goal_upper_lims = [desired_conf[i] + goal_lim_range[i]*goal_region_fraction for i in range(len(config.lower_lims))]
@@ -189,17 +189,19 @@ def rrt(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit 
             nodes.append(last)
 
             last_to_desired = dist_fun(last, desired_conf)
-
-            if last_to_desired < closest_dist:
+            if closest_dist == 999:
                 closest_dist = last_to_desired
 
-                if closest_dist < 1: # Kind of annealing
-                    step = closest_dist
+            if less_than_tol(closest_dist, last_to_desired):
+                closest_dist = last_to_desired
+
+                # if closest_dist < 1: # Kind of annealing
+                #     step = closest_dist
 
                 if config.DEBUG:
                     print("Closest : {}, step : {}, counter : {}".format(closest_dist, step, counter))
 
-                if dist_fun(last, desired_conf) < tolerance:
+                if less_than_tol(tolerance, dist_fun(last, desired_conf)):
                     print("RRT: Found a path to goal within tolerance in {} sec!".format(elapsed))
                     dist_fun(last, desired_conf)
                     found = True
@@ -249,5 +251,5 @@ def rrt(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit 
 
 if __name__=='__main__':
     goal =  [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-    rrt((0.0, 0.0, 0.0, 0.0, 0.0, 0.0), goal, n_it = 1000, time_limit = 10.0, visualise=100)
+    rrt((0.0, 0.0, 0.0, 0.0, 0.0, 0.0), goal, n_it = 1000, time_limit = 10.0, visualise=100, tolerance = [0.1, 0.1])
     rrt((0.0, 0.0, 0.0, 0.0, 0.0, 0.0), goal, n_it = 1000, time_limit = 10.0, visualise=100, tool_space=False)
