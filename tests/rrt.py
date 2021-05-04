@@ -1,7 +1,7 @@
 import cProfile, pstats, io
 from vs068_pb.rrt import rrt
 from pstats import SortKey
-from vs068_pb.utils import Disconnect, quick_load_bot, set_joint_states
+from vs068_pb.utils import Disconnect, quick_load_bot, set_joint_states, Camera
 from vs068_pb.ik_fk import getFK_FN
 import pybullet as p
 import vs068_pb.config as config
@@ -41,8 +41,12 @@ qKey = ord('q')
 xKey = ord('x')
 upKey = p.B3G_UP_ARROW
 downKey = p.B3G_DOWN_ARROW
+spaceKey = p.B3G_SPACE
 start_time = time.time()
 flag = False
+time_anim_bak = 21.0
+space_time = time.time()
+cKey = ord('c')
 
 while qKey not in events and xKey not in events:
     for q in path:
@@ -53,7 +57,8 @@ while qKey not in events and xKey not in events:
             continue
 
         start_time = time.time() 
-        set_joint_states(cid, botId, config.info.free_joints, q, [0]*6)
+        if time_anim < 20:
+            set_joint_states(cid, botId, config.info.free_joints, q, [0]*6)
         time.sleep(time_anim/len(path))  
 
         # Check keyboard
@@ -67,6 +72,14 @@ while qKey not in events and xKey not in events:
         elif downKey in events:
             time_anim += 1
             #print(time_anim)
+        elif spaceKey in events and time.time() - space_time > 0.2:
+            space_time = time.time()
+            tmp = time_anim_bak
+            time_anim_bak = time_anim
+            time_anim = tmp
+            #print(time_anim)
+        elif cKey in events:
+            Camera(cid, botId, 11)
         elif qKey in events:
             flag = True
     if flag:
