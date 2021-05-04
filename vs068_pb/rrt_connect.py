@@ -1,3 +1,21 @@
+# PSEUDOCODE - From https://theclassytim.medium.com/robotic-path-planning-rrt-and-rrt-212319121378
+# 
+# Qgoal //region that identifies success
+# Counter = 0 //keeps track of iterations
+# lim = n //number of iterations algorithm should run for
+# G(V,E) //Graph containing edges and vertices, initialized as empty
+# While counter < lim:
+#     Xnew  = RandomPosition()
+#     if IsInObstacle(Xnew) == True: ## Add validation later
+#         continue
+#     Xnearest = Nearest(G(V,E),Xnew) //find nearest vertex
+#     Link = Chain(Xnew,Xnearest)
+#     G.append(Link)
+#     if Xnew in Qgoal:
+#         Return G
+# Return G
+
+
 import pybullet as p
 from vs068_pb.ik_fk import get_valid_ik, getFK_FN
 from vs068_pb.utils import quick_load_bot, save_state, restore_state, get_delta_pose_generator, argmin, get_distance, set_joint_states, \
@@ -69,7 +87,8 @@ def get_extend_fn(obstacles=[]):
 
 ###########
 
-# PSEUDOCODE - From https://theclassytim.medium.com/robotic-path-planning-rrt-and-rrt-212319121378
+# https://github.com/caelan/motion-planners/blob/master/motion_planners/rrt.py
+
 
 # Qgoal //region that identifies success
 # Counter = 0 //keeps track of iterations
@@ -86,19 +105,19 @@ def get_extend_fn(obstacles=[]):
 #         Return G
 # Return G
 
-def rrt(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit = 5.0, step = 0.01, n_it = 100, \
-        visualise=0, greedy_prob = 0.2, **kwargs):
+def rrt_connect(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit = 5.0, step = 0.01, n_it = 100, visualise=0, **kwargs):
+    # NOTE : Tool mode won't work currently due to the dist_fun utilising desired_conf. Possible solution - add a direction flag?
     config.DEBUG = False
     extend_fn, roadmap = get_extend_fn()
 
     start_time = time.time()
     fk = getFK_FN()
     desired_fk = fk(desired_conf)
-    nodes = [TreeNode(current_conf)]
+    both_nodes = [[TreeNode(current_conf)], [TreeNode(desired_conf)]]
     np.random.seed(int(time.time()))
     closest_dist = 999
     found = False
-    
+    greedy_prob = 0.3
 
     if tool_space and isinstance(tolerance, (int, float)):
         tolerance = [tolerance]*2
@@ -138,26 +157,15 @@ def rrt(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit 
 
     generator = interval_generator(config.lower_lims, config.upper_lims, use_halton=True)
 
-    # Greedy generator
-    goal_region_fraction = 0.02 # Proportion of joint range each way
-    goal_lim_range = [config.upper_lims[i] - config.lower_lims[i] for i in range(len(config.lower_lims))]
-    goal_lower_lims = [desired_conf[i] - goal_lim_range[i]*goal_region_fraction for i in range(len(config.lower_lims))]
-    goal_upper_lims = [desired_conf[i] + goal_lim_range[i]*goal_region_fraction for i in range(len(config.lower_lims))]
-    generator_goal = interval_generator(goal_lower_lims, goal_upper_lims, use_halton=True)
-
-    rand_num = uniform_generator(1)
-
-    for counter in range(int(n_it)):
+    for counter in range(int(n_it/2)):
+        for nodes in both_nodes:
         # Don't go on for too long
         elapsed = time.time() - start_time
         if elapsed > time_limit:
             print("RRT: Timed out at {} seconds!".format(elapsed))
             break
 
-        if next(rand_num)[0] < greedy_prob or counter == 0:
-            new_conf = next(generator_goal)
-        else:
-            new_conf = next(generator)
+        new_conf = next(generator)
         
         nodes_select = randomize(nodes)[:min(500, len(nodes))]
         
@@ -175,7 +183,8 @@ def rrt(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit 
 
             if less_than_tol(closest_dist, last_to_desired):
                 closest_dist = last_to_desired
-                # if closest_dist < 1: # Some kind of annealing but leads to irregular trajectories
+
+                # if closest_dist < 1: # Kind of annealing
                 #     step = closest_dist
 
                 if config.DEBUG:
@@ -198,8 +207,6 @@ def rrt(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit 
     if config.DEBUG:
         print("Closest : {}, step : {}, counter : {}".format(closest_dist, step, counter))
 
-
-    ### Plotting
     if visualise != 0:       
         from mpl_toolkits import mplot3d
         import matplotlib.pyplot as plt
@@ -232,5 +239,5 @@ def rrt(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit 
 
 if __name__=='__main__':
     goal =  [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-    rrt((0.0, 0.0, 0.0, 0.0, 0.0, 0.0), goal, n_it = 1000, time_limit = 10.0, visualise=100, tolerance = [0.1, 0.1])
-    rrt((0.0, 0.0, 0.0, 0.0, 0.0, 0.0), goal, n_it = 1000, time_limit = 10.0, visualise=100, tool_space=False)
+    #rrt_connect((0.0, 0.0, 0.0, 0.0, 0.0, 0.0), goal, n_it = 1000, time_limit = 10.0, visualise=100, tolerance = [0.1, 0.1])
+    rrt_connect((0.0, 0.0, 0.0, 0.0, 0.0, 0.0), goal, n_it = 1000, time_limit = 10.0, visualise=100, tool_space=False)

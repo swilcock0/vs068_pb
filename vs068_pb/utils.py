@@ -424,6 +424,26 @@ def uniform_generator(d):
     while True:
         yield np.random.uniform(size=d)
 
+def diff_all(a,b):
+    ''' Return b - a '''
+    if isinstance(a, (int, float)):
+        return b - a
+    else:
+        assert len(a) == len(b)
+        return [b[i] - a[i] for i in range(len(a))]
+
+def less_than_tol(tol, lst):
+    ''' Returns true if all less than tolerance '''
+    if isinstance(lst, (float, int, np.float)):
+        return lst - tol < 0
+    
+    diff = diff_all(tol, lst)
+
+    for i in range(len(lst)):
+        if diff[i] > 0:
+            return False
+    return True
+
 def halton_generator(d):
     import ghalton
     seed = random.randint(0, 1000)
@@ -541,6 +561,12 @@ def quick_load_bot(mode=p.DIRECT, physicsClient=-1):
     with HideOutput():
         if physicsClient == -1:
             physicsClient = p.connect(mode)
+
+        p.resetDebugVisualizerCamera(cameraDistance=1.7, 
+                                    cameraYaw=45.0, 
+                                    cameraPitch=-20.0, 
+                                    cameraTargetPosition=[0,0,0.8])
+
         p.setAdditionalSearchPath(config.src_fldr)
         startPos = [0,0,0]
         startOrientation = p.getQuaternionFromEuler([0,0,0])
