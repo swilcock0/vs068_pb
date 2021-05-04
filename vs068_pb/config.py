@@ -4,6 +4,7 @@ from collections import namedtuple
 import numpy as np
 from math import radians
 import pybullet as p
+import sys
 
 try:
     import ikfast_vs068 as ikv
@@ -15,6 +16,8 @@ except ModuleNotFoundError:
 root = tk.Tk()
 screen_width = root.winfo_screenwidth()
 screen_height = root.winfo_screenheight()
+root.update()
+root.destroy()
 
 # Data folders and locations
 src_fldr = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', "resources")

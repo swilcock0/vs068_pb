@@ -105,7 +105,7 @@ def get_extend_fn(obstacles=[]):
 #         Return G
 # Return G
 
-def rrt(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit = 5.0, n_it = 100, visualise=0, **kwargs):
+def rrt(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit = 5.0, step = 0.01, n_it = 100, visualise=0, **kwargs):
     config.DEBUG = False
     extend_fn, roadmap = get_extend_fn()
 
@@ -114,7 +114,6 @@ def rrt(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit 
     desired_fk = fk(desired_conf)
     nodes = [TreeNode(current_conf)]
     np.random.seed(int(time.time()))
-    step = 0.01
     closest_dist = 999
     found = False
     greedy_prob = 0.3
@@ -245,7 +244,6 @@ def rrt(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit 
                 ax.scatter3D(x, y, z, c=c, cmap='Reds');
 
         plt.show()
-        #input("Displaying plot")
 
     return configs(closest.retrace())
 

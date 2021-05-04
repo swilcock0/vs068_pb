@@ -435,7 +435,6 @@ def diff_all(a,b):
 def less_than_tol(tol, lst):
     ''' Returns true if all less than tolerance '''
     if isinstance(lst, (float, int, np.float)):
-        print(lst)
         return lst - tol < 0
     
     diff = diff_all(tol, lst)
@@ -562,6 +561,12 @@ def quick_load_bot(mode=p.DIRECT, physicsClient=-1):
     with HideOutput():
         if physicsClient == -1:
             physicsClient = p.connect(mode)
+
+        p.resetDebugVisualizerCamera(cameraDistance=1.7, 
+                                    cameraYaw=45.0, 
+                                    cameraPitch=-20.0, 
+                                    cameraTargetPosition=[0,0,0.8])
+
         p.setAdditionalSearchPath(config.src_fldr)
         startPos = [0,0,0]
         startOrientation = p.getQuaternionFromEuler([0,0,0])
