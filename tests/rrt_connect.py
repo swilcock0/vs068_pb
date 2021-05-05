@@ -1,5 +1,5 @@
 import cProfile, pstats, io
-from vs068_pb.rrt import rrt
+from vs068_pb.rrt_connect import rrt_connect
 from pstats import SortKey
 from vs068_pb.utils import Disconnect, quick_load_bot, set_joint_states, Camera, loadFloor, interval_generator, create_box_collisions, Pose,\
     size_all
@@ -10,13 +10,16 @@ import math
 import sys
 
 dims = [[0.2, 0.2, 0.2], [0.1, 0.1, 1.2], [0.1, 0.1, 1.2]]
-pos = [[0.3,0.3,0.7], [-0.25, -0.25, 0.6], [-0.25, 0.25, 0.6]]
+pos = [[0.3,0.3,0.7], [-0.3, -0.3, 0.6], [-0.35, 0.35, 0.6]]
 collision_fn, visual_fn = create_box_collisions(dims, pos)
 
 goals =  [(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)]
 
 generator = interval_generator(config.lower_lims, config.upper_lims, use_halton=True)
-for i in range(10):
+print("Finding valid configurations")
+for i in range(100):
+    if i % 10 == 0:
+        print(i)
     next_goal = next(generator)
 
     while (collision_fn(next_goal) == True):
@@ -32,23 +35,24 @@ paths = []
 success_list = []
 path_section = [(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)]
 
-tolerance = 0.1# [0.01, 0.1] 
+tolerance = 0.01# [0.01, 0.1] 
 start_time = time.time()
 
-pr = cProfile.Profile()
-pr.enable()
+# pr = cProfile.Profile()
+# pr.enable()
 for i in range(1, len(goals)):
-    path_section, success = rrt(path_section[-1], goals[i], n_it = 1000, time_limit = 3.0, tool_space=False, step=0.1, tolerance=tolerance, collision_fn=collision_fn)
+    #print(goals[i-1], goals[i])
+    path_section, success = rrt_connect(path_section[-1], goals[i], n_it = 1000, time_limit = 3.0, tool_space=False, step=0.1, tolerance=tolerance, visualise=0, collision_fn=collision_fn)
     paths.append(path_section)
     success_list.append(success)
     print(i)
 
-pr.disable()
-s = io.StringIO()
-sortby = SortKey.CUMULATIVE
-ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-ps.print_stats()
-print(s.getvalue())
+# pr.disable()
+# s = io.StringIO()
+# sortby = SortKey.CUMULATIVE
+# ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+# ps.print_stats()
+# print(s.getvalue())
 print(success_list)
 
 print("Path : {} long, Goals : {} long".format(len(paths), len(goals)))

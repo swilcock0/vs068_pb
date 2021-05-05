@@ -1,71 +1,14 @@
-# PSEUDOCODE - From https://theclassytim.medium.com/robotic-path-planning-rrt-and-rrt-212319121378
-# 
-# Qgoal //region that identifies success
-# Counter = 0 //keeps track of iterations
-# lim = n //number of iterations algorithm should run for
-# G(V,E) //Graph containing edges and vertices, initialized as empty
-# While counter < lim:
-#     Xnew  = RandomPosition()
-#     if IsInObstacle(Xnew) == True: ## Add validation later
-#         continue
-#     Xnearest = Nearest(G(V,E),Xnew) //find nearest vertex
-#     Link = Chain(Xnew,Xnearest)
-#     G.append(Link)
-#     if Xnew in Qgoal:
-#         Return G
-# Return G
-
-
 import pybullet as p
 from vs068_pb.ik_fk import get_valid_ik, getFK_FN
 from vs068_pb.utils import quick_load_bot, save_state, restore_state, get_delta_pose_generator, argmin, get_distance, set_joint_states, \
-    interval_generator, sample_line, get_difference, Disconnect, loadFloor, randomize, get_pose_distance, uniform_generator, less_than_tol
+    interval_generator, sample_line, get_difference, Disconnect, loadFloor, randomize, get_pose_distance, uniform_generator, less_than_tol, \
+        get_dist_fn
+from vs068_pb.rrt import TreeNode, configs
 import vs068_pb.config as config
 from math import radians, degrees
 import time
 from random import random
 import numpy as np
-
-class TreeNode(object):
-
-    def __init__(self, config, parent=None):
-        fk = getFK_FN()
-        self.config = config
-        self.parent = parent
-        self.pose = fk(config)
-        #self.pose = []
-        self.children = 0
-
-    def retrace(self):
-        sequence = []
-        node = self
-        while node is not None:
-            sequence.append(node)
-            node = node.parent
-        return sequence[::-1]
-
-    def clear(self):
-        self.node_handle = None
-        self.edge_handle = None
-
-    # def draw(self, env, color=apply_alpha(RED, alpha=0.5)):
-    #     # https://github.mit.edu/caelan/lis-openrave
-    #     from manipulation.primitives.display import draw_node, draw_edge
-    #     self.node_handle = draw_node(env, self.config, color=color)
-    #     if self.parent is not None:
-    #         self.edge_handle = draw_edge(
-    #             env, self.config, self.parent.config, color=color)
-
-    def __str__(self):
-        return 'TreeNode(' + str(self.config) + ')'
-    __repr__ = __str__
-
-
-def configs(nodes):
-    if nodes is None:
-        return None
-    return list(map(lambda n: n.config, nodes))
-
 
 def get_extend_fn(obstacles=[]):
     # collision_fn, _ = get_collision_fn(obstacles)
@@ -84,129 +27,97 @@ def get_extend_fn(obstacles=[]):
 
     return extend_fn, roadmap
 
+##########
 
-###########
+# PSEUDOCODE - From Kuffner 2000, "RRT-Connect: An Efficient Approach to Single-Query Path Planning"
 
-# https://github.com/caelan/motion-planners/blob/master/motion_planners/rrt.py
+# Ta.init(qinit); Tb.init(qgoal);
+# for k = 1 to K do
+# qrand ← RANDOM CONFIG();
+# if not (EXTEND(Ta, qrand) =Trapped) then
+# if (CONNECT(Tb, qnew) =Reached) then
+# Return PATH(Ta, Tb);
+# SWAP(Ta, Tb);
 
-
-# Qgoal //region that identifies success
-# Counter = 0 //keeps track of iterations
-# lim = n //number of iterations algorithm should run for
-# G(V,E) //Graph containing edges and vertices, initialized as empty
-# While counter < lim:
-#     Xnew  = RandomPosition()
-#     if IsInObstacle(Xnew) == True: ## Add validation later
-#         continue
-#     Xnearest = Nearest(G(V,E),Xnew) //find nearest vertex
-#     Link = Chain(Xnew,Xnearest)
-#     G.append(Link)
-#     if Xnew in Qgoal:
-#         Return G
-# Return G
-
-def rrt_connect(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit = 5.0, step = 0.01, n_it = 100, visualise=0, **kwargs):
-    # NOTE : Tool mode won't work currently due to the dist_fun utilising desired_conf. Possible solution - add a direction flag?
+def rrt_connect(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=True, tolerance=0.01, time_limit = 5.0, step = 0.1, n_it = 100, \
+        visualise=0, **kwargs):
     config.DEBUG = False
     extend_fn, roadmap = get_extend_fn()
 
     start_time = time.time()
     fk = getFK_FN()
-    desired_fk = fk(desired_conf)
-    both_nodes = [[TreeNode(current_conf)], [TreeNode(desired_conf)]]
-    np.random.seed(int(time.time()))
-    closest_dist = 999
-    found = False
-    greedy_prob = 0.3
+    
+    nodes_list = [[TreeNode(current_conf)], [TreeNode(desired_conf)]]
 
     if tool_space and isinstance(tolerance, (int, float)):
-        tolerance = [tolerance]*2
+        tolerance = [tolerance, tolerance*10]
 
-    def get_dist_fn():
-        if tool_space:
-            def fn(node_a, node_b=-1):
-                if isinstance(node_b, TreeNode):
-                    #print("Node")
-                    test_pose = node_b.pose
-                elif isinstance(node_b, int):
-                    #print("int")
-                    test_pose = desired_fk
-                elif isinstance(node_b, list):
-                    #print("list")
-                    test_pose = fk(node_b)
-                elif isinstance(node_b, np.ndarray):
-                    #print("NP Array")
-                    test_pose = fk(node_b)
-                else:
-                    print(type(node_b))
-                    test_pose = fk(node_b)
-
-                distance = get_pose_distance(node_a.pose, test_pose)
-                return distance #2*distance[0] + distance[1]
-        else:
-            def fn(conf_a, conf_b):
-                if isinstance(conf_a, TreeNode):
-                    conf_a = conf_a.config
-                if isinstance(conf_b, TreeNode):
-                    conf_b = conf_b.config 
-                return get_distance(conf_a, conf_b)
-                #return max([abs(conf_a[q] - conf_b[q]) for q in range(len(conf_a))])
-        return fn
-
-    dist_fun = get_dist_fn()
+    dist_fun = get_dist_fn(tool_space)
 
     generator = interval_generator(config.lower_lims, config.upper_lims, use_halton=True)
 
-    for counter in range(int(n_it/2)):
-        for nodes in both_nodes:
+    connect = True
+
+    for counter in range(int(n_it)):
         # Don't go on for too long
         elapsed = time.time() - start_time
         if elapsed > time_limit:
-            print("RRT: Timed out at {} seconds!".format(elapsed))
+            print("RRTConnect: Timed out at {} seconds! Returning closest".format(elapsed))
             break
+        
+        if len(nodes_list[0]) < len(nodes_list[1]):
+            nodes = nodes_list[0]
+            nodes_to = nodes_list[1]
+            backwards = False
+        else:
+            nodes = nodes_list[1]
+            nodes_to = nodes_list[0]
+            backwards = True
+    
 
         new_conf = next(generator)
-        
-        nodes_select = randomize(nodes)[:min(500, len(nodes))]
-        
-        last, smallest = argmin(lambda n: dist_fun(n, new_conf), nodes_select)
 
+        connect = True
+        # Get closest in active tree and extend from it
+        last, smallest = argmin(lambda n: dist_fun(n, new_conf), nodes)
         for q in extend_fn(last.config, new_conf, step=step):
-            # if collision_fn(q):
-            #     break
+            if collision_fn(q):
+                connect = False
+                break
             last = TreeNode(q, parent=last)
             nodes.append(last)
 
-            last_to_desired = dist_fun(last, desired_conf)
-            if closest_dist == 999:
-                closest_dist = last_to_desired
-
-            if less_than_tol(closest_dist, last_to_desired):
-                closest_dist = last_to_desired
-
-                # if closest_dist < 1: # Kind of annealing
-                #     step = closest_dist
-
-                if config.DEBUG:
-                    print("Closest : {}, step : {}, counter : {}".format(closest_dist, step, counter))
-
-                if less_than_tol(tolerance, dist_fun(last, desired_conf)):
-                    print("RRT: Found a path to goal within tolerance in {} sec!".format(elapsed))
-                    dist_fun(last, desired_conf)
-                    found = True
+        if connect:
+            # Get closest in goal tree and extend to the closest in active
+            last_to, smallest = argmin(lambda n: dist_fun(n, last), nodes_to)
+            for q in extend_fn(last_to.config, new_conf, step=step):
+                if collision_fn(q):
+                    connect = False
                     break
-                    #return configs(last.retrace())  
-        if found:
+                last_to = TreeNode(q, parent=last_to)
+                nodes_to.append(last_to)
+
+        if connect:
             break
+            
+    if connect == True:
+        if backwards:
+            nodes = nodes_list[0]
+            nodes_to = nodes_list[1]
+            _ = last
+            last = last_to
+            last_to = _
+        
+        for q in configs(last_to.retrace()[::-1]):
+            last = TreeNode(q, parent=last)
+            nodes.append(last)
 
-    if found == True:
         closest = last
+        print("RRTConnect: Connecting graph found in {} sec!".format(time.time() - start_time))
     else:
-        closest, closest_dist = argmin(lambda n: dist_fun(n, desired_conf), nodes)
+        closest, closest_dist = argmin(lambda n: dist_fun(n, desired_conf), nodes_list[0])
 
-    if config.DEBUG:
-        print("Closest : {}, step : {}, counter : {}".format(closest_dist, step, counter))
-
+    ### Plotting
     if visualise != 0:       
         from mpl_toolkits import mplot3d
         import matplotlib.pyplot as plt
@@ -220,7 +131,7 @@ def rrt_connect(current_conf, desired_conf, tool_space=True, tolerance=0.01, tim
             nodes_rnd = [closest]
         fk = getFK_FN()
         
-        for i in range(visualise):
+        for i in range(min(len(nodes), visualise)):
             path = configs(nodes_rnd[i].retrace())
             poses = [fk(q) for q in path]
             x = ([p[0][0] for p in poses])
@@ -234,10 +145,11 @@ def rrt_connect(current_conf, desired_conf, tool_space=True, tolerance=0.01, tim
                 ax.scatter3D(x, y, z, c=c, cmap='Reds');
 
         plt.show()
-
-    return configs(closest.retrace())
+    #print(closest.retrace())
+    return configs(closest.retrace()), connect
 
 if __name__=='__main__':
     goal =  [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-    #rrt_connect((0.0, 0.0, 0.0, 0.0, 0.0, 0.0), goal, n_it = 1000, time_limit = 10.0, visualise=100, tolerance = [0.1, 0.1])
-    rrt_connect((0.0, 0.0, 0.0, 0.0, 0.0, 0.0), goal, n_it = 1000, time_limit = 10.0, visualise=100, tool_space=False)
+    rrt_connect((0.0, 0.0, 0.0, 0.0, 0.0, 0.0), goal, n_it = 1000, time_limit = 10.0, visualise=-1, tolerance = [0.1, 0.1])
+    rrt_connect((0.0, 0.0, 0.0, 0.0, 0.0, 0.0), goal, n_it = 1000, time_limit = 10.0, visualise=-1, tool_space=False)
+    

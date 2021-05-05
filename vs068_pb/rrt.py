@@ -1,7 +1,8 @@
 import pybullet as p
 from vs068_pb.ik_fk import get_valid_ik, getFK_FN
 from vs068_pb.utils import quick_load_bot, save_state, restore_state, get_delta_pose_generator, argmin, get_distance, set_joint_states, \
-    interval_generator, sample_line, get_difference, Disconnect, loadFloor, randomize, get_pose_distance, uniform_generator, less_than_tol
+    interval_generator, sample_line, get_difference, Disconnect, loadFloor, randomize, get_pose_distance, uniform_generator, less_than_tol, \
+        get_dist_fn, size_all
 import vs068_pb.config as config
 from math import radians, degrees
 import time
@@ -102,38 +103,7 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
     if tool_space and isinstance(tolerance, (int, float)):
         tolerance = [tolerance, tolerance*10]
 
-    def get_dist_fn():
-        if tool_space:
-            def fn(node_a, node_b=-1):
-                if isinstance(node_b, TreeNode):
-                    #print("Node")
-                    test_pose = node_b.pose
-                elif isinstance(node_b, int):
-                    #print("int")
-                    test_pose = desired_fk
-                elif isinstance(node_b, list):
-                    #print("list")
-                    test_pose = fk(node_b)
-                elif isinstance(node_b, np.ndarray):
-                    #print("NP Array")
-                    test_pose = fk(node_b)
-                else:
-                    #print(type(node_b))
-                    test_pose = fk(node_b)
-
-                distance = get_pose_distance(node_a.pose, test_pose)
-                return distance #2*distance[0] + distance[1]
-        else:
-            def fn(conf_a, conf_b):
-                if isinstance(conf_a, TreeNode):
-                    conf_a = conf_a.config
-                if isinstance(conf_b, TreeNode):
-                    conf_b = conf_b.config 
-                return get_distance(conf_a, conf_b)
-                #return max([abs(conf_a[q] - conf_b[q]) for q in range(len(conf_a))])
-        return fn
-
-    dist_fun = get_dist_fn()
+    dist_fun = get_dist_fn(tool_space)
 
     generator = interval_generator(config.lower_lims, config.upper_lims, use_halton=True)
 
@@ -226,7 +196,6 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
                 ax.scatter3D(x, y, z, c=c, cmap='Reds');
 
         plt.show()
-
     return configs(closest.retrace()), found
 
 if __name__=='__main__':

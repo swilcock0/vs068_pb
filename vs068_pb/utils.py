@@ -325,6 +325,7 @@ def get_length(vec, norm=2):
     return np.linalg.norm(vec, ord=norm)
 
 def get_difference(p1, p2):
+    from vs068_pb.rrt import TreeNode
     assert len(p1) == len(p2)
     return np.array(p2) - np.array(p1)
 
@@ -687,14 +688,15 @@ def loadFloor(cid=0):
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
     planeId = p.loadURDF("plane.urdf", physicsClientId=cid)
 
-def create_box_collisions(dims, pos):
+def create_box_collisions(dims, pos, safety=1.2):
     ''' 
     Creates box collision and visual functions
 
     Example usage:
     dims = [[0.2, 0.2, 0.2], [0.1, 0.1, 1.2], [0.1, 0.1, 1.2]]
     pos = [[0.3,0.3,0.7], [-0.25, -0.25, 0.6], [-0.25, 0.25, 0.6]]
-    collision_fn, visual_fn = create_box_collisions(dims, pos)
+    collision_fn, visual_fn = create_box_collisions(dims, pos, safety=1.2)
+    Gives a 20% safety boundary on sides
 
     Remember to Disconnect after using or their may be artifacts in display
     '''
@@ -702,55 +704,60 @@ def create_box_collisions(dims, pos):
     Disconnect()
     botId, cid = quick_load_bot(mode=p.DIRECT)
     
+    allowed = []
+
     for i in range(len(dims)):
         box_lower = [pos[i][j] - dims[i][j]/2 for j in range(3)]
         box_upper = [pos[i][j] + dims[i][j]/2 for j in range(3)]
-        box_halfs = [abs(box_upper[i] - box_lower[i])/2 for i in range(3)]
+        box_halfs = [safety*abs(box_upper[i] - box_lower[i])/2 for i in range(3)]
+        #print(box_halfs)
         box_centre = [box_lower[i] + box_halfs[i] for i in range(3)] 
 
         #print(box_lower, box_centre, box_upper, box_halfs)
 
-        box_vis = p.createCollisionShape(p.GEOM_BOX, 
+        box_col = p.createCollisionShape(p.GEOM_BOX, 
                             physicsClientId=cid, 
                             halfExtents = box_halfs, 
                             )
-        test_body = p.createMultiBody(baseMass=0, baseCollisionShapeIndex=box_vis, basePosition = box_centre, physicsClientId=cid)
+
+        test_body = p.createMultiBody(baseMass=0, baseCollisionShapeIndex=box_col, basePosition = box_centre, physicsClientId=cid)
         #print("Box : ID {} ".format(test_body))
     
+    set_joint_states(cid, botId, config.info.free_joints, [0]*6, [0]*6)
+    p.stepSimulation(cid)
+
+    for contact in (p.getContactPoints(physicsClientId=cid)):
+        if (([contact[3], contact[4]] not in config.NEVER_COLLIDE_NUMS) and contact[1] != contact[2]):                
+            allowed.append(contact[:5])
+
+
+    def check_contacts_against_init(a, allowed=allowed):
+        #print(allowed)
+        if contact[:5] in allowed:
+            # print(contact[:5])
+            # print(allowed)
+            # input()
+            return False
+        else:
+            return True
+
 
     def collision_fn(q):
         #print("Collision check")
+        #print("Allowed : ".format(allowed))
         set_joint_states(cid, botId, config.info.free_joints, q, [0]*6)
         p.stepSimulation(cid)
         allowedContacts = True
 
         for contact in (p.getContactPoints(physicsClientId=cid)):
-            if ([contact[3], contact[4]] not in config.NEVER_COLLIDE_NUMS) or contact[1] != contact[2]:                
+            if (([contact[3], contact[4]] not in config.NEVER_COLLIDE_NUMS) and contact[1] != contact[2]) or check_contacts_against_init(contact):                
                 allowedContacts = False
-                # if config.DEBUG:
-                #     print("Blocked : {}".format(contact[:5]))
+                #if config.DEBUG:
+                #print("Blocked : {}".format(contact[:5]))
 
-        return not(allowedContacts) # Placeholder
+        return not(allowedContacts)
 
-    # def collision_fn_eef(q):
-    # Initial naive implementation that forgot the IK only gives EEF positions
-    #     pose = fk(q)
-    #     point = pose[0]
 
-    #     def box_test(dim, ctr, point):
-    #         box_lower = [ctr[i] - dim[i]/2 for i in range(3)]
-    #         box_upper = [ctr[i] + dim[i]/2 for i in range(3)]
-    #         #print(box_lower, ctr, box_upper)
-
-    #         if all([point[i] < box_upper[i] and point[i] > box_lower[i] for i in range(len(point))]):
-    #             return True
-    #         else:
-    #             return False
-
-    #     if all([box_test(dims[i], pos[i], point) for i in range(len(dims))]):
-    #         return True
-    #     else:
-    #         return False
 
     def create_visual_fn(cid):
         for i in range(len(dims)):
@@ -769,3 +776,50 @@ def create_box_collisions(dims, pos):
             test_body = p.createMultiBody(baseMass=0, baseVisualShapeIndex=box_vis, basePosition = box_centre, physicsClientId=cid)
 
     return collision_fn, create_visual_fn
+
+def get_dist_fn(tool_space=False):
+    from vs068_pb.ik_fk import getFK_FN
+    from vs068_pb.rrt import TreeNode
+
+    fk = getFK_FN()
+
+    if tool_space:
+        def fn(node_a, node_b=-1):
+            if isinstance(node_b, TreeNode):
+                #print("Node")
+                test_pose = node_b.pose
+            elif isinstance(node_b, int):
+                #print("int")
+                test_pose = desired_fk
+            elif isinstance(node_b, list):
+                #print("list")
+                test_pose = fk(node_b)
+            elif isinstance(node_b, np.ndarray):
+                #print("NP Array")
+                test_pose = fk(node_b)
+            else:
+                #print(type(node_b))
+                test_pose = fk(node_b)
+
+            distance = get_pose_distance(node_a.pose, test_pose)
+            return distance #2*distance[0] + distance[1]
+    else:
+        def fn(conf_a, conf_b):
+            if isinstance(conf_a, TreeNode):
+                conf_a = conf_a.config
+            if isinstance(conf_b, TreeNode):
+                conf_b = conf_b.config 
+            return get_distance(conf_a, conf_b)
+            #return max([abs(conf_a[q] - conf_b[q]) for q in range(len(conf_a))])
+    return fn
+
+def size_all():
+    import sys
+
+    size_total = 0
+    _ = dir()
+
+    for key in _:
+        size_total += eval('sys.getsizeof(' + key + ')')
+
+    return size_total
