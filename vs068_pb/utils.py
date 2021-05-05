@@ -557,7 +557,7 @@ def set_joint_positions(cid, body, joints, values):
         set_joint_position(cid, body, joint, value)
 
 
-def quick_load_bot(mode=p.DIRECT, physicsClient=-1):
+def quick_load_bot(mode=p.DIRECT, physicsClient=-1, collisions = True):
     with HideOutput():
         if physicsClient == -1:
             physicsClient = p.connect(mode)
@@ -570,8 +570,11 @@ def quick_load_bot(mode=p.DIRECT, physicsClient=-1):
         p.setAdditionalSearchPath(config.src_fldr)
         startPos = [0,0,0]
         startOrientation = p.getQuaternionFromEuler([0,0,0])
-        botId = p.loadURDF(config.urdf, startPos, startOrientation, useFixedBase=1, flags=p.URDF_USE_SELF_COLLISION)
-        
+        if collisions:
+            botId = p.loadURDF(config.urdf, startPos, startOrientation, useFixedBase=1, flags=p.URDF_USE_SELF_COLLISION)
+        else:    
+                        botId = p.loadURDF(config.urdf, startPos, startOrientation, useFixedBase=1, flags=p.URDF_IGNORE_COLLISION_SHAPES)
+
         return botId, physicsClient
 
 def irange(start, stop=None, step=1):  # np.arange
@@ -609,6 +612,7 @@ def getLinkFromName(name):
 config.NEVER_COLLIDE_NUMS = []
 for pair in config.NEVER_COLLIDE_NAMES:
     config.NEVER_COLLIDE_NUMS.append([getLinkFromName(pair[0]), getLinkFromName(pair[1])])
+#config.NEVER_COLLIDE_NUMS.append([0, -1])
 
 #print(config.NEVER_COLLIDE_NAMES)
 #print(config.NEVER_COLLIDE_NUMS)
@@ -682,3 +686,86 @@ def checkAllowedContacts(conf, cid=0, botId=0):
 def loadFloor(cid=0):
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
     planeId = p.loadURDF("plane.urdf", physicsClientId=cid)
+
+def create_box_collisions(dims, pos):
+    ''' 
+    Creates box collision and visual functions
+
+    Example usage:
+    dims = [[0.2, 0.2, 0.2], [0.1, 0.1, 1.2], [0.1, 0.1, 1.2]]
+    pos = [[0.3,0.3,0.7], [-0.25, -0.25, 0.6], [-0.25, 0.25, 0.6]]
+    collision_fn, visual_fn = create_box_collisions(dims, pos)
+
+    Remember to Disconnect after using or their may be artifacts in display
+    '''
+
+    Disconnect()
+    botId, cid = quick_load_bot(mode=p.DIRECT)
+    
+    for i in range(len(dims)):
+        box_lower = [pos[i][j] - dims[i][j]/2 for j in range(3)]
+        box_upper = [pos[i][j] + dims[i][j]/2 for j in range(3)]
+        box_halfs = [abs(box_upper[i] - box_lower[i])/2 for i in range(3)]
+        box_centre = [box_lower[i] + box_halfs[i] for i in range(3)] 
+
+        #print(box_lower, box_centre, box_upper, box_halfs)
+
+        box_vis = p.createCollisionShape(p.GEOM_BOX, 
+                            physicsClientId=cid, 
+                            halfExtents = box_halfs, 
+                            )
+        test_body = p.createMultiBody(baseMass=0, baseCollisionShapeIndex=box_vis, basePosition = box_centre, physicsClientId=cid)
+        #print("Box : ID {} ".format(test_body))
+    
+
+    def collision_fn(q):
+        #print("Collision check")
+        set_joint_states(cid, botId, config.info.free_joints, q, [0]*6)
+        p.stepSimulation(cid)
+        allowedContacts = True
+
+        for contact in (p.getContactPoints(physicsClientId=cid)):
+            if ([contact[3], contact[4]] not in config.NEVER_COLLIDE_NUMS) or contact[1] != contact[2]:                
+                allowedContacts = False
+                # if config.DEBUG:
+                #     print("Blocked : {}".format(contact[:5]))
+
+        return not(allowedContacts) # Placeholder
+
+    # def collision_fn_eef(q):
+    # Initial naive implementation that forgot the IK only gives EEF positions
+    #     pose = fk(q)
+    #     point = pose[0]
+
+    #     def box_test(dim, ctr, point):
+    #         box_lower = [ctr[i] - dim[i]/2 for i in range(3)]
+    #         box_upper = [ctr[i] + dim[i]/2 for i in range(3)]
+    #         #print(box_lower, ctr, box_upper)
+
+    #         if all([point[i] < box_upper[i] and point[i] > box_lower[i] for i in range(len(point))]):
+    #             return True
+    #         else:
+    #             return False
+
+    #     if all([box_test(dims[i], pos[i], point) for i in range(len(dims))]):
+    #         return True
+    #     else:
+    #         return False
+
+    def create_visual_fn(cid):
+        for i in range(len(dims)):
+            box_lower = [pos[i][j] - dims[i][j]/2 for j in range(3)]
+            box_upper = [pos[i][j] + dims[i][j]/2 for j in range(3)]
+            box_halfs = [abs(box_upper[i] - box_lower[i])/2 for i in range(3)]
+            box_centre = [box_lower[i] + box_halfs[i] for i in range(3)] 
+
+            #print(box_lower, box_centre, box_upper, box_halfs)
+
+            box_vis = p.createVisualShape(p.GEOM_BOX, 
+                                rgbaColor=[1, 0.0, 0.0, 1], 
+                                physicsClientId=cid, 
+                                halfExtents = box_halfs, 
+                                )
+            test_body = p.createMultiBody(baseMass=0, baseVisualShapeIndex=box_vis, basePosition = box_centre, physicsClientId=cid)
+
+    return collision_fn, create_visual_fn
