@@ -86,7 +86,7 @@ def get_extend_fn(obstacles=[]):
 #         Return G
 # Return G
 
-def rrt(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit = 5.0, step = 0.01, n_it = 100, \
+def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=True, tolerance=0.01, time_limit = 5.0, step = 0.01, n_it = 100, \
         visualise=0, greedy_prob = 0.2, **kwargs):
     config.DEBUG = False
     extend_fn, roadmap = get_extend_fn()
@@ -97,11 +97,10 @@ def rrt(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit 
     nodes = [TreeNode(current_conf)]
     np.random.seed(int(time.time()))
     closest_dist = 999
-    found = False
-    
+    found = False       
 
     if tool_space and isinstance(tolerance, (int, float)):
-        tolerance = [tolerance]*2
+        tolerance = [tolerance, tolerance*10]
 
     def get_dist_fn():
         if tool_space:
@@ -119,7 +118,7 @@ def rrt(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit 
                     #print("NP Array")
                     test_pose = fk(node_b)
                 else:
-                    print(type(node_b))
+                    #print(type(node_b))
                     test_pose = fk(node_b)
 
                 distance = get_pose_distance(node_a.pose, test_pose)
@@ -164,8 +163,8 @@ def rrt(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit 
         last, smallest = argmin(lambda n: dist_fun(n, new_conf), nodes_select)
 
         for q in extend_fn(last.config, new_conf, step=step):
-            # if collision_fn(q):
-            #     break
+            if collision_fn(q):
+                break
             last = TreeNode(q, parent=last)
             nodes.append(last)
 
@@ -213,7 +212,7 @@ def rrt(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit 
             nodes_rnd = [closest]
         fk = getFK_FN()
         
-        for i in range(visualise):
+        for i in range(min(len(nodes), visualise)):
             path = configs(nodes_rnd[i].retrace())
             poses = [fk(q) for q in path]
             x = ([p[0][0] for p in poses])
@@ -228,9 +227,10 @@ def rrt(current_conf, desired_conf, tool_space=True, tolerance=0.01, time_limit 
 
         plt.show()
 
-    return configs(closest.retrace())
+    return configs(closest.retrace()), found
 
 if __name__=='__main__':
     goal =  [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
     rrt((0.0, 0.0, 0.0, 0.0, 0.0, 0.0), goal, n_it = 1000, time_limit = 10.0, visualise=100, tolerance = [0.1, 0.1])
     rrt((0.0, 0.0, 0.0, 0.0, 0.0, 0.0), goal, n_it = 1000, time_limit = 10.0, visualise=100, tool_space=False)
+    
