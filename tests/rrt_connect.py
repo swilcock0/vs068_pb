@@ -46,6 +46,7 @@ for i in range(1, len(goals)):
     paths.append(path_section)
     success_list.append(success)
     print(i)
+    time.sleep(0.1)
 
 # pr.disable()
 # s = io.StringIO()

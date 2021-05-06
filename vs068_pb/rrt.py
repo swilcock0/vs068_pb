@@ -87,10 +87,18 @@ def get_extend_fn(obstacles=[]):
 #         Return G
 # Return G
 
-def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=True, tolerance=0.01, time_limit = 5.0, step = 0.01, n_it = 100, \
+def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=True, tolerance=0.01, time_limit = 1.0, step = 0.01, n_it = 100, \
         visualise=0, greedy_prob = 0.2, **kwargs):
     config.DEBUG = False
     extend_fn, roadmap = get_extend_fn()
+
+    # Check start/end states
+    if collision_fn(current_conf) or collision_fn(desired_conf):
+        if collision_fn(current_conf):
+            print("Start : {}".format(current_conf))
+        if collision_fn(desired_conf):
+            print("End : {}".format(desired_conf))
+        return [(0.0, 0.0, 0.0, 0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)], False
 
     start_time = time.time()
     fk = getFK_FN()
@@ -98,7 +106,7 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
     nodes = [TreeNode(current_conf)]
     np.random.seed(int(time.time()))
     closest_dist = 999
-    found = False       
+    found = False     
 
     if tool_space and isinstance(tolerance, (int, float)):
         tolerance = [tolerance, tolerance*10]
@@ -115,7 +123,8 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
     generator_goal = interval_generator(goal_lower_lims, goal_upper_lims, use_halton=True)
 
     rand_num = uniform_generator(1)
-
+    collisions = 0
+    not_collisions = 0
     for counter in range(int(n_it)):
         # Don't go on for too long
         elapsed = time.time() - start_time
@@ -124,17 +133,19 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
             break
 
         if next(rand_num)[0] < greedy_prob or counter == 0:
-            new_conf = next(generator_goal)
+            new_conf = desired_conf#next(generator_goal)
         else:
             new_conf = next(generator)
         
-        nodes_select = randomize(nodes)[:min(500, len(nodes))]
+        nodes_select = randomize(nodes)[:min(100, len(nodes))]
         
         last, smallest = argmin(lambda n: dist_fun(n, new_conf), nodes_select)
 
         for q in extend_fn(last.config, new_conf, step=step):
             if collision_fn(q):
+                collisions += 1
                 break
+            not_collisions += 1
             last = TreeNode(q, parent=last)
             nodes.append(last)
 
@@ -158,6 +169,9 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
                     #return configs(last.retrace())  
         if found:
             break
+    
+    if config.TEST_COLLISIONS:
+        print("{} collisions, {} not collisions".format(collisions, not_collisions))
 
     if found == True:
         closest = last
@@ -166,7 +180,6 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
 
     if config.DEBUG:
         print("Closest : {}, step : {}, counter : {}".format(closest_dist, step, counter))
-
 
     ### Plotting
     if visualise != 0:       
@@ -196,6 +209,9 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
                 ax.scatter3D(x, y, z, c=c, cmap='Reds');
 
         plt.show()
+
+    del(nodes)
+
     return configs(closest.retrace()), found
 
 if __name__=='__main__':

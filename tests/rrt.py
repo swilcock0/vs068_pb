@@ -16,7 +16,7 @@ collision_fn, visual_fn = create_box_collisions(dims, pos)
 goals =  [(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)]
 
 generator = interval_generator(config.lower_lims, config.upper_lims, use_halton=True)
-for i in range(10):
+for i in range(100):
     next_goal = next(generator)
 
     while (collision_fn(next_goal) == True):
@@ -26,6 +26,8 @@ for i in range(10):
 goals.append(goals[0])
 #print(config.screen_width)
 
+for goal in goals:
+    assert collision_fn(goal) == False
 
 #path = rrt((0.0, 0.0, 0.0, 0.0, 0.0, 0.0), goal, n_it = 1000, time_limit = 10.0, visualise=-1, tool_space=True, tolerance=[0.01, 0.1])
 paths = []
@@ -38,10 +40,17 @@ start_time = time.time()
 pr = cProfile.Profile()
 pr.enable()
 for i in range(1, len(goals)):
-    path_section, success = rrt(path_section[-1], goals[i], n_it = 1000, time_limit = 3.0, tool_space=False, step=0.1, tolerance=tolerance, collision_fn=collision_fn)
+    path_section, success = rrt(path_section[-1], goals[i], n_it = 1000, time_limit = 1.0, tool_space=False, step=0.1, tolerance=tolerance, collision_fn=collision_fn)
+    if (len(path_section) < 3):
+        print(path_section)
+        config.TEST_COLLISIONS_VERBOSE = True
+    else:
+        config.TEST_COLLISIONS_VERBOSE = False
     paths.append(path_section)
     success_list.append(success)
     print(i)
+
+print(config.LINK_IDS)
 
 pr.disable()
 s = io.StringIO()

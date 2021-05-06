@@ -544,14 +544,12 @@ def set_joint_position(cid, body, joint, value):
 
 def set_joint_states(cid, body, joints, positions, velocities):
     #print(joints, positions)
-    try:
-        assert len(joints) == len(positions) == len(velocities)
-        for joint, position, velocity in zip(joints, positions, velocities):
-            set_joint_state(cid, body, joint, position, velocity)
 
-            #print(joints, positions)
-    except:
-        print("Error")
+    assert len(joints) == len(positions) == len(velocities)
+    # See https://github.com/bulletphysics/bullet3/issues/2803
+    positions = [[pos] for pos in positions]
+    velocities = [[vel] for vel in velocities]
+    p.resetJointStatesMultiDof(body, joints, targetValues=positions, targetVelocities=velocities, physicsClientId=cid)
 
 def set_joint_positions(cid, body, joints, values):
     for joint, value in safe_zip(joints, values):
@@ -743,17 +741,16 @@ def create_box_collisions(dims, pos, safety=1.2):
 
 
     def collision_fn(q):
-        #print("Collision check")
-        #print("Allowed : ".format(allowed))
-        set_joint_states(cid, botId, config.info.free_joints, q, [0]*6)
+        joints = config.info.free_joints+config.FINGER_JOINTS
+        set_joint_states(cid, botId, joints, list(q)+[0]*2, [0]*8)
         p.stepSimulation(cid)
         allowedContacts = True
 
         for contact in (p.getContactPoints(physicsClientId=cid)):
-            if (([contact[3], contact[4]] not in config.NEVER_COLLIDE_NUMS) and contact[1] != contact[2]) or check_contacts_against_init(contact):                
+            if (([contact[3], contact[4]] not in config.NEVER_COLLIDE_NUMS) and contact[1] != contact[2]) and check_contacts_against_init(contact):                
                 allowedContacts = False
-                #if config.DEBUG:
-                #print("Blocked : {}".format(contact[:5]))
+                if config.TEST_COLLISIONS_VERBOSE:
+                    print("Blocked : {}".format(contact[:5]))
 
         return not(allowedContacts)
 
@@ -765,8 +762,6 @@ def create_box_collisions(dims, pos, safety=1.2):
             box_upper = [pos[i][j] + dims[i][j]/2 for j in range(3)]
             box_halfs = [abs(box_upper[i] - box_lower[i])/2 for i in range(3)]
             box_centre = [box_lower[i] + box_halfs[i] for i in range(3)] 
-
-            #print(box_lower, box_centre, box_upper, box_halfs)
 
             box_vis = p.createVisualShape(p.GEOM_BOX, 
                                 rgbaColor=[1, 0.0, 0.0, 1], 

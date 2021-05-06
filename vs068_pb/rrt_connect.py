@@ -44,6 +44,14 @@ def rrt_connect(current_conf, desired_conf, collision_fn = lambda q: False, tool
     config.DEBUG = False
     extend_fn, roadmap = get_extend_fn()
 
+    # Check start/end states
+    if collision_fn(current_conf) or collision_fn(desired_conf):
+        if collision_fn(current_conf):
+            print("Start : {}".format(current_conf))
+        if collision_fn(desired_conf):
+            print("End : {}".format(desired_conf))
+        return [(0.0, 0.0, 0.0, 0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)], False
+
     start_time = time.time()
     fk = getFK_FN()
     
