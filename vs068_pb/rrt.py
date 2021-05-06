@@ -1,7 +1,8 @@
 import pybullet as p
 from vs068_pb.ik_fk import get_valid_ik, getFK_FN
 from vs068_pb.utils import quick_load_bot, save_state, restore_state, get_delta_pose_generator, argmin, get_distance, set_joint_states, \
-    interval_generator, sample_line, get_difference, Disconnect, loadFloor, randomize, get_pose_distance, uniform_generator, less_than_tol
+    interval_generator, sample_line, get_difference, Disconnect, loadFloor, randomize, get_pose_distance, uniform_generator, less_than_tol, \
+        get_dist_fn, size_all
 import vs068_pb.config as config
 from math import radians, degrees
 import time
@@ -86,10 +87,18 @@ def get_extend_fn(obstacles=[]):
 #         Return G
 # Return G
 
-def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=True, tolerance=0.01, time_limit = 5.0, step = 0.01, n_it = 100, \
+def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=True, tolerance=0.01, time_limit = 1.0, step = 0.01, n_it = 100, \
         visualise=0, greedy_prob = 0.2, **kwargs):
     config.DEBUG = False
     extend_fn, roadmap = get_extend_fn()
+
+    # Check start/end states
+    if collision_fn(current_conf) or collision_fn(desired_conf):
+        if collision_fn(current_conf):
+            print("Start : {}".format(current_conf))
+        if collision_fn(desired_conf):
+            print("End : {}".format(desired_conf))
+        return [(0.0, 0.0, 0.0, 0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)], False
 
     start_time = time.time()
     fk = getFK_FN()
@@ -97,43 +106,12 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
     nodes = [TreeNode(current_conf)]
     np.random.seed(int(time.time()))
     closest_dist = 999
-    found = False       
+    found = False     
 
     if tool_space and isinstance(tolerance, (int, float)):
         tolerance = [tolerance, tolerance*10]
 
-    def get_dist_fn():
-        if tool_space:
-            def fn(node_a, node_b=-1):
-                if isinstance(node_b, TreeNode):
-                    #print("Node")
-                    test_pose = node_b.pose
-                elif isinstance(node_b, int):
-                    #print("int")
-                    test_pose = desired_fk
-                elif isinstance(node_b, list):
-                    #print("list")
-                    test_pose = fk(node_b)
-                elif isinstance(node_b, np.ndarray):
-                    #print("NP Array")
-                    test_pose = fk(node_b)
-                else:
-                    #print(type(node_b))
-                    test_pose = fk(node_b)
-
-                distance = get_pose_distance(node_a.pose, test_pose)
-                return distance #2*distance[0] + distance[1]
-        else:
-            def fn(conf_a, conf_b):
-                if isinstance(conf_a, TreeNode):
-                    conf_a = conf_a.config
-                if isinstance(conf_b, TreeNode):
-                    conf_b = conf_b.config 
-                return get_distance(conf_a, conf_b)
-                #return max([abs(conf_a[q] - conf_b[q]) for q in range(len(conf_a))])
-        return fn
-
-    dist_fun = get_dist_fn()
+    dist_fun = get_dist_fn(tool_space)
 
     generator = interval_generator(config.lower_lims, config.upper_lims, use_halton=True)
 
@@ -145,7 +123,8 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
     generator_goal = interval_generator(goal_lower_lims, goal_upper_lims, use_halton=True)
 
     rand_num = uniform_generator(1)
-
+    collisions = 0
+    not_collisions = 0
     for counter in range(int(n_it)):
         # Don't go on for too long
         elapsed = time.time() - start_time
@@ -154,17 +133,19 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
             break
 
         if next(rand_num)[0] < greedy_prob or counter == 0:
-            new_conf = next(generator_goal)
+            new_conf = desired_conf#next(generator_goal)
         else:
             new_conf = next(generator)
         
-        nodes_select = randomize(nodes)[:min(500, len(nodes))]
+        nodes_select = randomize(nodes)[:min(100, len(nodes))]
         
         last, smallest = argmin(lambda n: dist_fun(n, new_conf), nodes_select)
 
         for q in extend_fn(last.config, new_conf, step=step):
             if collision_fn(q):
+                collisions += 1
                 break
+            not_collisions += 1
             last = TreeNode(q, parent=last)
             nodes.append(last)
 
@@ -188,6 +169,9 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
                     #return configs(last.retrace())  
         if found:
             break
+    
+    if config.TEST_COLLISIONS:
+        print("{} collisions, {} not collisions".format(collisions, not_collisions))
 
     if found == True:
         closest = last
@@ -196,7 +180,6 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
 
     if config.DEBUG:
         print("Closest : {}, step : {}, counter : {}".format(closest_dist, step, counter))
-
 
     ### Plotting
     if visualise != 0:       
@@ -226,6 +209,8 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
                 ax.scatter3D(x, y, z, c=c, cmap='Reds');
 
         plt.show()
+
+    del(nodes)
 
     return configs(closest.retrace()), found
 
