@@ -763,8 +763,11 @@ def create_box_collisions(dims, pos, safety=1.2):
             box_halfs = [abs(box_upper[i] - box_lower[i])/2 for i in range(3)]
             box_centre = [box_lower[i] + box_halfs[i] for i in range(3)] 
 
+            colour = [0.0, 0.0, 0.0, 1.0]
+            colour[i%3] = 0.8
+
             box_vis = p.createVisualShape(p.GEOM_BOX, 
-                                rgbaColor=[1, 0.0, 0.0, 1], 
+                                rgbaColor=colour, 
                                 physicsClientId=cid, 
                                 halfExtents = box_halfs, 
                                 )
