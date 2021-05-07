@@ -674,7 +674,7 @@ def checkAllowedContacts(conf, cid=0, botId=0):
     allowedContacts = True
 
     for contact in (p.getContactPoints(physicsClientId=cid)):
-        if ([contact[3], contact[4]] not in config.NEVER_COLLIDE_NUMS):
+        if not([contact[3], contact[4]] in config.NEVER_COLLIDE_NUMS and contact[1] == contact[2]):
             allowedContacts = False
             
             if config.DEBUG:
@@ -685,6 +685,8 @@ def checkAllowedContacts(conf, cid=0, botId=0):
 def loadFloor(cid=0):
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
     planeId = p.loadURDF("plane.urdf", physicsClientId=cid)
+
+    return planeId
 
 def create_box_collisions(dims, pos, safety=1.2):
     ''' 
@@ -700,8 +702,14 @@ def create_box_collisions(dims, pos, safety=1.2):
     '''
 
     Disconnect()
-    botId, cid = quick_load_bot(mode=p.DIRECT)
-    
+    botId, cid = quick_load_bot(mode=p.GUI)
+    planeId = loadFloor(cid)
+
+    #planeId = -1
+
+    bodies = {planeId : "Floor", botId : "Bot"}
+
+    #print("Bot : {}, Floor: {}".format(botId, planeId))
     allowed = []
 
     for i in range(len(dims)):
@@ -719,7 +727,7 @@ def create_box_collisions(dims, pos, safety=1.2):
                             )
 
         test_body = p.createMultiBody(baseMass=0, baseCollisionShapeIndex=box_col, basePosition = box_centre, physicsClientId=cid)
-        #print("Box : ID {} ".format(test_body))
+        bodies.update({test_body : "Box_"+str(i+1)})
     
     set_joint_states(cid, botId, config.info.free_joints, [0]*6, [0]*6)
     p.stepSimulation(cid)
@@ -727,14 +735,28 @@ def create_box_collisions(dims, pos, safety=1.2):
     for contact in (p.getContactPoints(physicsClientId=cid)):
         if (([contact[3], contact[4]] not in config.NEVER_COLLIDE_NUMS) and contact[1] != contact[2]):                
             allowed.append(contact[:5])
+    
+    print(allowed)
 
+    def pretty_print_contact(contact, boxes_only=False):
+        if boxes_only:
+            reversed_dictionary = {value : key for (key, value) in bodies.items()}
 
-    def check_contacts_against_init(a, allowed=allowed):
-        #print(allowed)
+            if (contact[1] == reversed_dictionary["Floor"] or contact[1] == reversed_dictionary["Bot"]) and (contact[2] == reversed_dictionary["Floor"] or contact[2] == reversed_dictionary["Bot"]):
+                return False
+
+        contact_a_name = bodies.get(contact[1], "Unknown")
+        contact_b_name = bodies.get(contact[2], "Unknown")
+        link_a_id = contact[3]
+        link_b_id = contact[4]
+        print("Contact: {}:{} - {}:{}".format(contact_a_name, link_a_id, contact_b_name, link_b_id))
+        return True
+
+    def check_contacts_against_init(contact, allowed=allowed):
         if contact[:5] in allowed:
-            # print(contact[:5])
-            # print(allowed)
-            # input()
+            if config.TEST_COLLISIONS_VERBOSE:
+                print("Allowed:")
+                pretty_print_contact(contact)
             return False
         else:
             return True
@@ -746,11 +768,14 @@ def create_box_collisions(dims, pos, safety=1.2):
         p.stepSimulation(cid)
         allowedContacts = True
 
+        contacts = p.getContactPoints(physicsClientId=cid)
+
         for contact in (p.getContactPoints(physicsClientId=cid)):
-            if (([contact[3], contact[4]] not in config.NEVER_COLLIDE_NUMS) and contact[1] != contact[2]) and check_contacts_against_init(contact):                
+            if (([contact[3], contact[4]] not in config.NEVER_COLLIDE_NUMS) and contact[1] != contact[2]) and check_contacts_against_init(contact[:5]):                
                 allowedContacts = False
                 if config.TEST_COLLISIONS_VERBOSE:
-                    print("Blocked : {}".format(contact[:5]))
+                    print("Blocked")
+                    pretty_print_contact(contact)
 
         return not(allowedContacts)
 
@@ -771,45 +796,15 @@ def create_box_collisions(dims, pos, safety=1.2):
                                 physicsClientId=cid, 
                                 halfExtents = box_halfs, 
                                 )
-            test_body = p.createMultiBody(baseMass=0, baseVisualShapeIndex=box_vis, basePosition = box_centre, physicsClientId=cid)
+
+            box_col = p.createCollisionShape(p.GEOM_BOX, 
+                                physicsClientId=cid, 
+                                halfExtents = box_halfs, 
+                                )
+
+            test_body = p.createMultiBody(baseMass=1, baseVisualShapeIndex=box_vis, baseCollisionShapeIndex=box_col, basePosition = box_centre, physicsClientId=cid)
 
     return collision_fn, create_visual_fn
-
-def get_dist_fn(tool_space=False):
-    from vs068_pb.ik_fk import getFK_FN
-    from vs068_pb.rrt import TreeNode
-
-    fk = getFK_FN()
-
-    if tool_space:
-        def fn(node_a, node_b=-1):
-            if isinstance(node_b, TreeNode):
-                #print("Node")
-                test_pose = node_b.pose
-            elif isinstance(node_b, int):
-                #print("int")
-                test_pose = desired_fk
-            elif isinstance(node_b, list):
-                #print("list")
-                test_pose = fk(node_b)
-            elif isinstance(node_b, np.ndarray):
-                #print("NP Array")
-                test_pose = fk(node_b)
-            else:
-                #print(type(node_b))
-                test_pose = fk(node_b)
-
-            distance = get_pose_distance(node_a.pose, test_pose)
-            return distance #2*distance[0] + distance[1]
-    else:
-        def fn(conf_a, conf_b):
-            if isinstance(conf_a, TreeNode):
-                conf_a = conf_a.config
-            if isinstance(conf_b, TreeNode):
-                conf_b = conf_b.config 
-            return get_distance(conf_a, conf_b)
-            #return max([abs(conf_a[q] - conf_b[q]) for q in range(len(conf_a))])
-    return fn
 
 def size_all():
     import sys

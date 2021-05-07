@@ -2,7 +2,7 @@ import pybullet as p
 from vs068_pb.ik_fk import get_valid_ik, getFK_FN
 from vs068_pb.utils import quick_load_bot, save_state, restore_state, get_delta_pose_generator, argmin, get_distance, set_joint_states, \
     interval_generator, sample_line, get_difference, Disconnect, loadFloor, randomize, get_pose_distance, uniform_generator, less_than_tol, \
-        get_dist_fn, size_all
+        size_all, create_box_collisions
 import vs068_pb.config as config
 from math import radians, degrees
 import time
@@ -12,10 +12,10 @@ import numpy as np
 class TreeNode(object):
 
     def __init__(self, config, parent=None):
-        fk = getFK_FN()
+        self.fk = getFK_FN()
         self.config = config
         self.parent = parent
-        self.pose = fk(config)
+        self.pose = []
         #self.pose = []
         self.children = 0
 
@@ -31,13 +31,10 @@ class TreeNode(object):
         self.node_handle = None
         self.edge_handle = None
 
-    # def draw(self, env, color=apply_alpha(RED, alpha=0.5)):
-    #     # https://github.mit.edu/caelan/lis-openrave
-    #     from manipulation.primitives.display import draw_node, draw_edge
-    #     self.node_handle = draw_node(env, self.config, color=color)
-    #     if self.parent is not None:
-    #         self.edge_handle = draw_edge(
-    #             env, self.config, self.parent.config, color=color)
+    def getPose(self):
+        if self.pose == []:
+            self.pose = self.fk(self.config)
+        return self.pose
 
     def __str__(self):
         return 'TreeNode(' + str(self.config) + ')'
@@ -106,7 +103,8 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
     nodes = [TreeNode(current_conf)]
     np.random.seed(int(time.time()))
     closest_dist = 999
-    found = False     
+    found = False    
+    bias = True 
 
     if tool_space and isinstance(tolerance, (int, float)):
         tolerance = [tolerance, tolerance*10]
@@ -132,8 +130,11 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
             print("RRT: Timed out at {} seconds!".format(elapsed))
             break
 
-        if next(rand_num)[0] < greedy_prob or counter == 0:
-            new_conf = desired_conf#next(generator_goal)
+        if bias:
+            if next(rand_num)[0] < greedy_prob or counter == 0:
+                new_conf = desired_conf#next(generator_goal)
+            else:
+                new_conf = next(generator)
         else:
             new_conf = next(generator)
         
@@ -214,8 +215,58 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
 
     return configs(closest.retrace()), found
 
+def get_dist_fn(tool_space=False):
+    from vs068_pb.ik_fk import getFK_FN
+
+    fk = getFK_FN()
+
+    if tool_space:
+        def fn(node_a, node_b=-1):
+            if isinstance(node_b, TreeNode):
+                #print("Node")
+                test_pose = node_b.getPose()
+            elif isinstance(node_b, int):
+                #print("int")
+                test_pose = desired_fk
+            elif isinstance(node_b, list):
+                #print("list")
+                test_pose = fk(node_b)
+            elif isinstance(node_b, np.ndarray):
+                #print("NP Array")
+                test_pose = fk(node_b)
+            else:
+                #print(type(node_b))
+                test_pose = fk(node_b)
+
+            distance = get_pose_distance(node_a.getPose(), test_pose)
+            return distance #2*distance[0] + distance[1]
+    else:
+        def fn(conf_a, conf_b):
+            if isinstance(conf_a, TreeNode):
+                conf_a = conf_a.config
+            if isinstance(conf_b, TreeNode):
+                conf_b = conf_b.config 
+
+            #print(conf_a, conf_b)
+            return get_distance(conf_a, conf_b)
+            #return max([abs(conf_a[q] - conf_b[q]) for q in range(len(conf_a))])
+    return fn
+
 if __name__=='__main__':
+    dims = [[0.2, 0.2, 0.2], [0.1, 0.1, 1.2], [0.1, 0.1, 1.2]]
+    pos = [[0.3,0.3,0.7], [-0.25, -0.25, 0.6], [-0.25, 0.25, 0.6]]
+    collision_fn, _ = create_box_collisions(dims, pos)
+
     goal =  [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
     rrt((0.0, 0.0, 0.0, 0.0, 0.0, 0.0), goal, n_it = 1000, time_limit = 10.0, visualise=100, tolerance = [0.1, 0.1])
-    rrt((0.0, 0.0, 0.0, 0.0, 0.0, 0.0), goal, n_it = 1000, time_limit = 10.0, visualise=100, tool_space=False)
+
+
+    generator = interval_generator(config.lower_lims, config.upper_lims, use_halton=True)
+
+    goal = next(generator)
+    while (collision_fn(goal) == True):
+        goal = next(generator)
+
+    rrt((0.0, 0.0, 0.0, 0.0, 0.0, 0.0), goal, n_it = 1000, time_limit = 10.0, visualise=100, tool_space=False, collision_fn=collision_fn)
     
+

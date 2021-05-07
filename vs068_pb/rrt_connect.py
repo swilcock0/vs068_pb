@@ -1,9 +1,8 @@
 import pybullet as p
 from vs068_pb.ik_fk import get_valid_ik, getFK_FN
 from vs068_pb.utils import quick_load_bot, save_state, restore_state, get_delta_pose_generator, argmin, get_distance, set_joint_states, \
-    interval_generator, sample_line, get_difference, Disconnect, loadFloor, randomize, get_pose_distance, uniform_generator, less_than_tol, \
-        get_dist_fn
-from vs068_pb.rrt import TreeNode, configs
+    interval_generator, sample_line, get_difference, Disconnect, loadFloor, randomize, get_pose_distance, uniform_generator, less_than_tol
+from vs068_pb.rrt import TreeNode, configs, get_dist_fn
 import vs068_pb.config as config
 from math import radians, degrees
 import time
@@ -43,6 +42,9 @@ def rrt_connect(current_conf, desired_conf, collision_fn = lambda q: False, tool
         visualise=0, **kwargs):
     config.DEBUG = False
     extend_fn, roadmap = get_extend_fn()
+
+    collisions = 0
+    not_collisions = 0
 
     # Check start/end states
     if collision_fn(current_conf) or collision_fn(desired_conf):
@@ -91,7 +93,9 @@ def rrt_connect(current_conf, desired_conf, collision_fn = lambda q: False, tool
         for q in extend_fn(last.config, new_conf, step=step):
             if collision_fn(q):
                 connect = False
+                collisions += 1
                 break
+            not_collisions += 1
             last = TreeNode(q, parent=last)
             nodes.append(last)
 
@@ -124,6 +128,9 @@ def rrt_connect(current_conf, desired_conf, collision_fn = lambda q: False, tool
         print("RRTConnect: Connecting graph found in {} sec!".format(time.time() - start_time))
     else:
         closest, closest_dist = argmin(lambda n: dist_fun(n, desired_conf), nodes_list[0])
+
+    if config.TEST_COLLISIONS:
+        print("{} collisions, {} not collisions".format(collisions, not_collisions))
 
     ### Plotting
     if visualise != 0:       
