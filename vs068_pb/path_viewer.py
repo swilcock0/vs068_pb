@@ -4,7 +4,7 @@ from vs068_pb.utils import set_joint_states, loadFloor, Disconnect, quick_load_b
 import vs068_pb.config as config
 import math
 
-def view_path(paths, goals=None, success_list=None, visual_fn = lambda q: False):
+def view_path(paths, goals=None, success_list=None, visual_fn = lambda q: False, loop=True):
     # Disconnect the collision fn
     Disconnect()
 
@@ -12,7 +12,7 @@ def view_path(paths, goals=None, success_list=None, visual_fn = lambda q: False)
         # Create the coloured goal bot
         goalBot, cid = quick_load_bot(p.GUI, collisions=False)
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
-        visual_fn(cid)        
+        collision_view = visual_fn(cid, collision_boxes=True)        
 
         p.changeVisualShape(goalBot, 0, rgbaColor=[0.0, 1.0, 0.0, 0.0])
         for j in range(1, 12):
@@ -29,6 +29,8 @@ def view_path(paths, goals=None, success_list=None, visual_fn = lambda q: False)
     time_anim = 5.0
     qKey = ord('q')
     xKey = ord('x')
+    cKey = ord('c')
+    mKey = ord('m')
     upKey = p.B3G_UP_ARROW
     downKey = p.B3G_DOWN_ARROW
     spaceKey = p.B3G_SPACE
@@ -36,9 +38,11 @@ def view_path(paths, goals=None, success_list=None, visual_fn = lambda q: False)
     flag = False
     time_anim_bak = 101.0
     space_time = time.time()
-    cKey = ord('c')
+    m_time = time.time()
     num_delays = 0
+    vis_col_state = True
 
+    ''' TODO : Add non-looping version? '''
     while qKey not in events and xKey not in events:
         for count, path in enumerate(paths):
             if goals:
@@ -87,18 +91,33 @@ def view_path(paths, goals=None, success_list=None, visual_fn = lambda q: False)
                     time_anim_bak = time_anim
                     time_anim = tmp
                     del events[spaceKey]
-                    print(time_anim)
+                    while spaceKey not in events:
+                        time.sleep(0.5)
+                        events = p.getKeyboardEvents(cid)
+                    del events[spaceKey]
+                    #print(time_anim)
                 elif cKey in events:
                     Camera(cid, botId, 11)
                 elif qKey in events:
                     flag = True
-
+                elif mKey in events and time.time() - m_time > 0.5:
+                    m_time = time.time()
+                    vis_col_state = not(vis_col_state)
+                    for box in collision_view:
+                        colour = list(p.getVisualShapeData(box)[0][7])
+                        if vis_col_state:
+                            colour[3] = 0.2
+                        else:
+                            colour[3] = 0.0
+                        p.changeVisualShape(box, -1, rgbaColor=colour)
                 events = p.getKeyboardEvents(cid)
             if flag:
                 events.update({qKey : 1})
 
-            if qKey in events or xKey in events:
+            if xKey in events:
                 break
+        if loop == False:
+            break
 
     del events[qKey]
 

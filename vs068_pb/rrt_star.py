@@ -1,7 +1,10 @@
 from vs068_pb.rrt import TreeNode, configs
 
+''' See original - "Sampling-based algorithms for optimal motion planning" Karaman, Frazolli 2011 '''
+
+
 class OptimalNode(TreeNode):
-    def __init__(self):
+    def __init__(self, config, parent=None, d=0, path=[], iteration=None):
         self.config = config
         self.parent = parent
         self.children = set()

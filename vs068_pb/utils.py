@@ -688,34 +688,31 @@ def loadFloor(cid=0):
 
     return planeId
 
-def create_box_collisions(dims, pos, safety=1.2):
+def create_box_collisions(dims, pos, safety=0.05):
     ''' 
     Creates box collision and visual functions
 
     Example usage:
     dims = [[0.2, 0.2, 0.2], [0.1, 0.1, 1.2], [0.1, 0.1, 1.2]]
     pos = [[0.3,0.3,0.7], [-0.25, -0.25, 0.6], [-0.25, 0.25, 0.6]]
-    collision_fn, visual_fn = create_box_collisions(dims, pos, safety=1.2)
-    Gives a 20% safety boundary on sides
+    collision_fn, visual_fn = create_box_collisions(dims, pos, safety=0.05)
+    Gives a 5cm safety boundary on sides
 
     Remember to Disconnect after using or their may be artifacts in display
     '''
 
     Disconnect()
-    botId, cid = quick_load_bot(mode=p.GUI)
+    botId, cid = quick_load_bot(mode=p.DIRECT)
     planeId = loadFloor(cid)
 
-    #planeId = -1
+    bodies = {botId : "Bot", planeId : "Floor"}
 
-    bodies = {planeId : "Floor", botId : "Bot"}
-
-    #print("Bot : {}, Floor: {}".format(botId, planeId))
     allowed = []
 
     for i in range(len(dims)):
         box_lower = [pos[i][j] - dims[i][j]/2 for j in range(3)]
         box_upper = [pos[i][j] + dims[i][j]/2 for j in range(3)]
-        box_halfs = [safety*abs(box_upper[i] - box_lower[i])/2 for i in range(3)]
+        box_halfs = [safety+abs(box_upper[i] - box_lower[i])/2 for i in range(3)]
         #print(box_halfs)
         box_centre = [box_lower[i] + box_halfs[i] for i in range(3)] 
 
@@ -736,8 +733,8 @@ def create_box_collisions(dims, pos, safety=1.2):
         if (([contact[3], contact[4]] not in config.NEVER_COLLIDE_NUMS) and contact[1] != contact[2]):                
             allowed.append(contact[:5])
     
-    print(allowed)
-
+    print("Scene : {}".format(bodies))
+    
     def pretty_print_contact(contact, boxes_only=False):
         if boxes_only:
             reversed_dictionary = {value : key for (key, value) in bodies.items()}
@@ -751,6 +748,12 @@ def create_box_collisions(dims, pos, safety=1.2):
         link_b_id = contact[4]
         print("Contact: {}:{} - {}:{}".format(contact_a_name, link_a_id, contact_b_name, link_b_id))
         return True
+
+    if allowed != []:
+        print("Initial collisions : ")
+        for contact in allowed:
+            pretty_print_contact(contact)
+        print("... will be ignored throughout.")
 
     def check_contacts_against_init(contact, allowed=allowed):
         if contact[:5] in allowed:
@@ -781,7 +784,9 @@ def create_box_collisions(dims, pos, safety=1.2):
 
 
 
-    def create_visual_fn(cid):
+    def create_visual_fn(cid, collision_boxes=False):
+        vis_col = []
+
         for i in range(len(dims)):
             box_lower = [pos[i][j] - dims[i][j]/2 for j in range(3)]
             box_upper = [pos[i][j] + dims[i][j]/2 for j in range(3)]
@@ -803,6 +808,21 @@ def create_box_collisions(dims, pos, safety=1.2):
                                 )
 
             test_body = p.createMultiBody(baseMass=1, baseVisualShapeIndex=box_vis, baseCollisionShapeIndex=box_col, basePosition = box_centre, physicsClientId=cid)
+
+            if collision_boxes:
+                box_halfs = [safety+abs(box_upper[i] - box_lower[i])/2 for i in range(3)]
+
+                colour[3] = 0.2
+
+                box_vis = p.createVisualShape(p.GEOM_BOX, 
+                                rgbaColor=colour, 
+                                physicsClientId=cid, 
+                                halfExtents = box_halfs, 
+                                )
+
+                test_body = p.createMultiBody(baseMass=1, baseVisualShapeIndex=box_vis, basePosition = box_centre, physicsClientId=cid)
+                vis_col.append(test_body)
+        return vis_col
 
     return collision_fn, create_visual_fn
 
