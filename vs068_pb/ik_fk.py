@@ -141,11 +141,9 @@ def get_valid_ik(pose, cid=0, botId=0, validate=True, **kwargs):
     if validate:
         solutions = prune_invalid_poses(solutions, cid, botId,  **kwargs)
 
-    if len(solutions) == 0:
-        return []
     return solutions
 
-def sample_ik(cid, robot, pose, attempts=100, num_candidates=INF, epsilon=config.CART_TOL,  angle=config.ANGL_TOL, **kwargs):     
+def sample_ik(cid, robot, pose, attempts=100, num_candidates=INF, epsilon=config.CART_TOL,  angle=config.ANGL_TOL, time_limit=INF, **kwargs):     
     gen_pose = get_modded_pose_generator(pose, epsilon=epsilon, angle=angle, **kwargs)
     solutions = []
     ikfast = getIK_FN()
@@ -155,6 +153,11 @@ def sample_ik(cid, robot, pose, attempts=100, num_candidates=INF, epsilon=config
         attempts = 99999
 
     for i in range(int(attempts)):
+        if time.time() - start_time > time_limit and time_limit != INF:
+            if config.DEBUG:
+                print("Time limit reached for IK at pose {}".format(pose))
+            break
+
         pose_test = next(gen_pose)
 
         ik_result = ikfast(pose_test[0], pose_test[1])
@@ -185,7 +188,7 @@ def prune_invalid_poses(poses, cid=0, botId=0, **kwargs):
         return []
     else:
         valid_coll = []
-        state_init = save_state(cid)
+        #state_init = save_state(cid)
 
         for i in range(len(valid)):
             if checkAllowedContacts(valid[i], cid, botId):
@@ -194,7 +197,7 @@ def prune_invalid_poses(poses, cid=0, botId=0, **kwargs):
         if config.DEBUG:
             print("{} valid poses found within joint limits and allowed contacts.".format(len(valid_coll)))
     
-        restore_state(state_init, cid)
+        #restore_state(state_init, cid)
         return valid_coll
 
 #################

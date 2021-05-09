@@ -38,8 +38,9 @@ def get_extend_fn(obstacles=[]):
 # Return PATH(Ta, Tb);
 # SWAP(Ta, Tb);
 
-def rrt_connect(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=True, tolerance=0.01, time_limit = 5.0, step = 0.1, n_it = 100, \
-        visualise=0, **kwargs):
+def rrt_connect(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=True, tolerance=0.01, return_tree=False, \
+    limits=[config.lower_lims, config.upper_lims],\
+    time_limit = 5.0, step = 0.1, n_it = 100, visualise=0, **kwargs):
     config.DEBUG = False
     extend_fn, roadmap = get_extend_fn()
 
@@ -64,7 +65,7 @@ def rrt_connect(current_conf, desired_conf, collision_fn = lambda q: False, tool
 
     dist_fun = get_dist_fn(tool_space)
 
-    generator = interval_generator(config.lower_lims, config.upper_lims, use_halton=True)
+    generator = interval_generator(limits[0], limits[1], use_halton=True)
 
     connect = True
 
@@ -161,7 +162,13 @@ def rrt_connect(current_conf, desired_conf, collision_fn = lambda q: False, tool
 
         plt.show()
     #print(closest.retrace())
-    return configs(closest.retrace()), connect
+    if return_tree:
+        for n in nodes_to:
+            nodes.append(n)
+        return configs(closest.retrace()), connect, nodes
+    else:
+        del(nodes)
+        return configs(closest.retrace()), connect
 
 if __name__=='__main__':
     goal =  [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]

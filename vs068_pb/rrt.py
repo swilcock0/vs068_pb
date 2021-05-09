@@ -2,7 +2,7 @@ import pybullet as p
 from vs068_pb.ik_fk import get_valid_ik, getFK_FN
 from vs068_pb.utils import quick_load_bot, save_state, restore_state, get_delta_pose_generator, argmin, get_distance, set_joint_states, \
     interval_generator, sample_line, get_difference, Disconnect, loadFloor, randomize, get_pose_distance, uniform_generator, less_than_tol, \
-        size_all, create_box_collisions
+        size_all
 import vs068_pb.config as config
 from math import radians, degrees
 import time
@@ -37,7 +37,7 @@ class TreeNode(object):
         return self.pose
 
     def __str__(self):
-        return 'TreeNode(' + str(self.config) + ')'
+        return self.__class__.__name__ + '(' + str(self.config) + ')'
     __repr__ = __str__
 
 
@@ -84,8 +84,8 @@ def get_extend_fn(obstacles=[]):
 #         Return G
 # Return G
 
-def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=True, tolerance=0.01, time_limit = 1.0, step = 0.01, n_it = 100, \
-        visualise=0, greedy_prob = 0.2, **kwargs):
+def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=True, tolerance=0.01, limits=[config.lower_lims, config.upper_lims], time_limit = 1.0, step = 0.01, n_it = 100, \
+        visualise=0, greedy_prob = 0.2, return_tree=False, **kwargs):
     config.DEBUG = False
     extend_fn, roadmap = get_extend_fn()
 
@@ -111,13 +111,13 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
 
     dist_fun = get_dist_fn(tool_space)
 
-    generator = interval_generator(config.lower_lims, config.upper_lims, use_halton=True)
+    generator = interval_generator(limits[0], limits[1], use_halton=True)
 
     # Greedy generator
     goal_region_fraction = 0.02 # Proportion of joint range each way
-    goal_lim_range = [config.upper_lims[i] - config.lower_lims[i] for i in range(len(config.lower_lims))]
-    goal_lower_lims = [desired_conf[i] - goal_lim_range[i]*goal_region_fraction for i in range(len(config.lower_lims))]
-    goal_upper_lims = [desired_conf[i] + goal_lim_range[i]*goal_region_fraction for i in range(len(config.lower_lims))]
+    goal_lim_range = [limits[1][i] - limits[0][i] for i in range(len(limits[0]))]
+    goal_lower_lims = [desired_conf[i] - goal_lim_range[i]*goal_region_fraction for i in range(len(limits[0]))]
+    goal_upper_lims = [desired_conf[i] + goal_lim_range[i]*goal_region_fraction for i in range(len(limits[0]))]
     generator_goal = interval_generator(goal_lower_lims, goal_upper_lims, use_halton=True)
 
     rand_num = uniform_generator(1)
@@ -164,13 +164,16 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
 
                 if less_than_tol(tolerance, dist_fun(last, desired_conf)):
                     print("RRT: Found a path to goal within tolerance in {} sec!".format(elapsed))
-                    dist_fun(last, desired_conf)
+                    #dist_fun(last, desired_conf)
                     found = True
                     break
                     #return configs(last.retrace())  
         if found:
             break
     
+    if counter >= n_it-1:
+        print("RRT: Maxed out iterations.")
+
     if config.TEST_COLLISIONS:
         print("{} collisions, {} not collisions".format(collisions, not_collisions))
 
@@ -211,9 +214,12 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
 
         plt.show()
 
-    del(nodes)
 
-    return configs(closest.retrace()), found
+    if return_tree:
+        return configs(closest.retrace()), found, nodes
+    else:
+        del(nodes)
+        return configs(closest.retrace()), found
 
 def get_dist_fn(tool_space=False):
     from vs068_pb.ik_fk import getFK_FN
@@ -261,7 +267,7 @@ if __name__=='__main__':
     rrt((0.0, 0.0, 0.0, 0.0, 0.0, 0.0), goal, n_it = 1000, time_limit = 10.0, visualise=100, tolerance = [0.1, 0.1])
 
 
-    generator = interval_generator(config.lower_lims, config.upper_lims, use_halton=True)
+    generator = interval_generator(limits[0], limits[1], use_halton=True)
 
     goal = next(generator)
     while (collision_fn(goal) == True):

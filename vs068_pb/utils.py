@@ -136,6 +136,7 @@ def Step(steps = 10000, sleep = 1, cid=0, botId=0):
         if p.readUserDebugParameter(config.params['button'], cid) > config.buttonsave:
             controltype = abs(controltype - 1)
             config.buttonsave = p.readUserDebugParameter(config.params['button'], cid)
+            print(get_link_pose(botId, 8))
              
         # Select the controller type based on button history
         if controltype == 0:
@@ -320,6 +321,13 @@ def multiply(*poses):
         pose = p.multiplyTransforms(pose[0], pose[1], *next_pose)
     return pose
 
+def get_link_pose(botId, link):
+    # TODO (swilcock0) : Better integration with IKFAST, see getFK_FN
+    state = p.getLinkState(botId, link)
+    pos = state[0]
+    orn = state[1]
+    
+    return pos, orn
 
 def get_length(vec, norm=2):
     return np.linalg.norm(vec, ord=norm)
@@ -572,7 +580,7 @@ def quick_load_bot(mode=p.DIRECT, physicsClient=-1, collisions = True):
         if collisions:
             botId = p.loadURDF(config.urdf, startPos, startOrientation, useFixedBase=1, flags=p.URDF_USE_SELF_COLLISION)
         else:    
-                        botId = p.loadURDF(config.urdf, startPos, startOrientation, useFixedBase=1, flags=p.URDF_IGNORE_COLLISION_SHAPES)
+            botId = p.loadURDF(config.urdf, startPos, startOrientation, useFixedBase=1, flags=p.URDF_IGNORE_COLLISION_SHAPES)
 
         return botId, physicsClient
 
@@ -836,3 +844,8 @@ def size_all():
         size_total += eval('sys.getsizeof(' + key + ')')
 
     return size_total
+
+def flip_dict(dictionary):
+    reversed_dictionary = {value : key for (key, value) in dictionary.items()}
+
+    return reversed_dictionary
