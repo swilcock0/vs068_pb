@@ -8,6 +8,7 @@ from mpl_toolkits import mplot3d
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 import pandas as pd
+import dash_core_components as dcc
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as io
@@ -174,21 +175,6 @@ class Reachability(object):
             
             fig.add_trace(
                 go.Scatter3d(
-                    x=df[df['Y']<0]['X'], y=df[df['Y']<0]['Y'], z=df[df['Y']<0]['Z'], 
-                    mode ='markers', 
-                    marker=dict(
-                        color=df[df['Y']<0]['Reachability'], 
-                        colorscale='RdYlGn',
-                        colorbar=dict(
-                            x=1.02,
-                            title="Reachability"
-                        )
-                    ),
-                    visible=False
-                )
-            )
-            fig.add_trace(
-                go.Scatter3d(
                     x=df['X'], y=df['Y'], z=df['Z'],
                     mode ='markers', 
                     marker=dict(
@@ -201,82 +187,123 @@ class Reachability(object):
                     )
                 )
             )
-            fig.add_trace(
-                go.Scatter3d(
-                    x=df[df['Z']<0.8]['X'], y=df[df['Z']<0.8]['Y'], z=df[df['Z']<0.8]['Z'],
-                    mode ='markers', 
-                    marker=dict(
-                        color=df[df['Z']<0.8]['Reachability'], 
-                        colorscale='RdYlGn',
-                        colorbar=dict(
-                            x=1.02,
-                            title="Reachability"
-                        )
-                    ),
-                    visible=False
-                )
-            )
+            self.x_slider = 1.0
+            self.y_slider = 1.0
+            self.z_slider = 1.4
 
-            steps = []
-            for i in range(10):
+            # # def update_data(x_in=None, y_in=None, z_in=None):
+            # #     if x_in != None:
+            # #         self.x_slider = x_in
+            # #     if y_in != None:
+            # #         self.y_slider = y_in
+            # #     if z_in != None:
+            # #         self.z_slider = z_in
+
+            # #     slider_vals = [self.x_slider, self.y_slider, self.z_slider]
+            # #     print(slider_vals)
+            # #     data = df
+            # #     data = data[data["X"] < slider_vals[0]]
+            # #     data = data[data["Y"] < slider_vals[1]]
+            # #     data = data[data["Z"] < slider_vals[2]]
+
+            # #     x = [list(data["X"])]
+            # #     y = [list(data["Y"])]
+            # #     z = [list(data["Z"])]
+            # #     c = [list(data["Reachability"])]
+
+            #     return [x,y,z,c]
+
+            steps_x = []
+            for i in np.linspace(0.0, 1.0, 11):
                 step = dict(
                     method="update",
                     args=[
                         {
-                            "x" : df[df['X']<i/20]['X'],
-                            "y" : df[df['X']<i/20]['Y'],
-                            "z" : df[df['X']<i/20]['Z']
+                            "x" : update_data(x_in=i)[0],
+                            "y" : update_data(x_in=i)[1],
+                            "z" : update_data(x_in=i)[2],
+                            "color" : update_data(x_in=i)[3],
+                            "colorscale" :'RdYlGn',
+
                         }
-                    ]
+                    ],
+                    label=str(round(i, 1)),
+                    value=round(i, 1)
                 )
-                steps.append(step)
+                steps_x.append(step)
+
+            steps_y = []
+            for i in np.linspace(0.0, 1.0, 11):
+                step = dict(
+                    method="update",
+                    args=[
+                        {
+                            "x" : update_data(y_in=i)[0],
+                            "y" : update_data(y_in=i)[1],
+                            "z" : update_data(y_in=i)[2],
+                            "color" : update_data(y_in=i)[3],
+                            "colorscale" :'RdYlGn',
+                        }
+                    ],
+                    label=str(round(i, 1)),
+                    value=round(i, 1)
+                )
+                steps_y.append(step)
+            
+            steps_z = []
+            for i in np.linspace(0.0, 1.4, 15):
+                step = dict(
+                    method="update",
+                    args=[
+                        {
+                            "x" : [list(df[ df['Z'] > i ]['X'])],
+                            "y" : [list(df[ df['Z'] > i ]['Y'])],
+                            "z" : [list(df[ df['Z'] > i ]['Z'])],
+                            "color" : [list(df[ df['Z'] > i ]['Reachability'])],
+                            "colorscale" :'RdYlGn',
+                        }
+                    ],
+                    label=str(round(i, 1)),
+                    value=round(i, 1)
+                )
+                steps_z.append(step)
 
             fig.update_layout(
                 sliders=[
                     dict(
-                        active=5,
-                        currentvalue={"prefix": "Frequency: "},
-                        pad={"t": 50},
-                        steps=steps)
-                ],
-                updatemenus=[
+                        active=10,
+                        currentvalue={"prefix": "X: "},
+                        pad={"t": 10},
+                        len=0.2,
+                        x = 0.1,
+                        steps=steps_x),
                     dict(
-                        type = "buttons",
-                        direction = "left",
-                        buttons=list([
-                            dict(
-                                args=[{"visible": [False, True, False],
-                                    "title": "Reachability : Full"}],
-                                label="Full",
-                                method="update"
-                            ),
-                            dict(
-                                args=[{"visible": [True, False, False],
-                                    "title": "Reachability : Half"}],
-                                label="Half",
-                                method="update"
-                            ),
-                            dict(
-                                args=[{"visible": [False, False, True],
-                                    "title": "Reachability : Top"}],
-                                label="Bottom",
-                                method="update"
-                            )
-                        ]),
-                        pad={"r": 10, "t": 10},
-                        showactive=True,
-                        x=0.11,
-                        xanchor="left",
-                        y=1.1,
-                        yanchor="top",
-                    ),
+                        active=10,
+                        currentvalue={"prefix": "Y: "},
+                        pad={"t": 10},
+                        len=0.2,
+                        x=0.4,
+                        steps=steps_y),
+                    dict(
+                        active=14,
+                        currentvalue={"prefix": "Z: "},
+                        pad={"t": 10},
+                        len=0.2,
+                        x=0.7,
+                        steps=steps_z)
                 ],
+
                 title="Reachability Map",
                 title_x=0.5
             )
+            #update_data()
+            # for i in fig.layout.sliders:
+            #     print(i.active/10)
+            #     input()
+            #input()
 
-            fig.show(renderer="browser")#pv = PlotlyViewer(fig)
-
+            fig.show(renderer="browser")
+            
             if pybullet_view:
                 every_n = 1
                 botId, cid = quick_load_bot(p.GUI)
