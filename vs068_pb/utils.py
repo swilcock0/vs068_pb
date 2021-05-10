@@ -661,10 +661,15 @@ def set_joint_positions(cid, body, joints, values):
         set_joint_position(cid, body, joint, value)
 
 
-def quick_load_bot(mode=p.DIRECT, physicsClient=-1, collisions = True):
+def quick_load_bot(mode=p.DIRECT, physicsClient=-1, collisions = True, fullscreen = True):
     with HideOutput():
         if physicsClient == -1:
-            physicsClient = p.connect(mode)
+            if fullscreen:
+                gui_options = "--width="+str(config.screen_width)+" --height="+str(config.screen_height)
+                physicsClient = p.connect(mode, options=gui_options)
+                #p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
+            else:
+                physicsClient = p.connect(mode, options=gui_options)
 
         p.resetDebugVisualizerCamera(cameraDistance=1.7, 
                                     cameraYaw=45.0, 
