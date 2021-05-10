@@ -9,10 +9,35 @@ from numpy import array, concatenate
 import sys
 import os
 import pybullet_data
+# from PyQt5.QtWidgets import QApplication
+# from PyQt5.QtCore import QUrl
+# from PyQt5 import QtWebEngineWidgets
 
+_EPS = np.finfo(float).eps * 4.0
 INF = config.INF
 '''pyBullet convenience functions'''
 
+# class PlotlyViewer(QtWebEngineWidgets.QWebEngineView):
+#     def __init__(self, fig, exec=True):
+#         import plotly.offline
+#         import os, sys
+
+#         # Create a QApplication instance or use the existing one if it exists
+#         self.app = QApplication.instance() if QApplication.instance() else QApplication(sys.argv)
+
+#         super().__init__()
+
+#         self.file_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "temp.html"))
+#         plotly.offline.plot(fig, filename=self.file_path, auto_open=False)
+#         self.load(QUrl.fromLocalFile(self.file_path))
+#         self.setWindowTitle("Plotly Viewer")
+#         self.show()
+
+#         if exec:
+#             self.app.exec_()
+
+#     def closeEvent(self, event):
+#         os.remove(self.file_path)
 
 class HideOutput(object):
     '''
@@ -51,7 +76,21 @@ class HideOutput(object):
         os.close(self._oldstdout_fno) # Added
 
 def quat_from_euler(euler):
-    return p.getQuaternionFromEuler(euler) # TODO: extrinsic (static) vs intrinsic (rotating)
+    #return p.getQuaternionFromEuler(euler) # TODO: extrinsic (static) vs intrinsic (rotating)
+    x,y,z = euler
+    cx = np.cos(x * 0.5)
+    sx = np.sin(x * 0.5)
+    cy = np.cos(y * 0.5)
+    sy = np.sin(y * 0.5)
+    cz = np.cos(z * 0.5)
+    sz = np.sin(z * 0.5)
+
+    qx = (sx * cy * cz) - (cx * sy * sz)
+    qy = (cx * sy * cz) + (sx * cy * sz)
+    qz = (cx * cy * sz) - (sx * sy * cz)
+    qw = (cx * cy * cz) + (sx * sy * cz)
+
+    return qx, qy, qz, qw   
 
 def euler_from_quat(quat):
     return p.getEulerFromQuaternion(quat) # rotation around fixed axis
@@ -156,6 +195,10 @@ def Step(steps = 10000, sleep = 1, cid=0, botId=0):
         # Add the line if DEBUG is True in config.params at top
         if config.DEBUG:
             DrawEEFLine(botId, cid)
+
+        for contact in (p.getContactPoints(physicsClientId=cid)):
+            if not([contact[3], contact[4]] in config.NEVER_COLLIDE_NUMS and contact[1] == contact[2]):
+                print("Contact : {}".format(contact[:5]))
             
 
 
@@ -284,8 +327,62 @@ def restore_bullet(filename, cid):
 
 #####################################
 
-def matrix_from_quat(cid, quat):
+def matrix_from_quat(cid, quat=[0,0,0,0]):
+    """Return homogeneous rotation matrix from quaternion.
+    >>> R = quaternion_matrix([0.06146124, 0, 0, 0.99810947])
+    >>> numpy.allclose(R, rotation_matrix(0.123, (1, 0, 0)))
+    True
+    """
     return np.array(p.getMatrixFromQuaternion(quat, physicsClientId=cid)).reshape(3, 3)
+
+    # import math
+
+    # q = np.array(quat[:4], dtype=np.float64, copy=True)
+    # nq = np.dot(q, q)
+    # if nq < _EPS:
+    #     return np.identity(4)
+    # q *= math.sqrt(2.0 / nq)
+    # q = np.outer(q, q)
+    # return np.array((
+    #     (1.0-q[1, 1]-q[2, 2],     q[0, 1]-q[2, 3],     q[0, 2]+q[1, 3]),
+    #     (    q[0, 1]+q[2, 3], 1.0-q[0, 0]-q[2, 2],     q[1, 2]-q[0, 3]),
+    #     (    q[0, 2]-q[1, 3],     q[1, 2]+q[0, 3], 1.0-q[0, 0]-q[1, 1])
+    #     ), dtype=np.float64)
+
+def quat_from_matrix(matrix):
+    """Return quaternion from rotation matrix.
+    >>> R = rotation_matrix(0.123, (1, 2, 3))
+    >>> q = quaternion_from_matrix(R)
+    >>> numpy.allclose(q, [0.0164262, 0.0328524, 0.0492786, 0.9981095])
+    True
+    """
+    matrix[0].append(0)
+    matrix[1].append(0)
+    matrix[2].append(0)
+    matrix.append([0,0,0,1])
+    import math
+    q = np.empty((4, ), dtype=np.float64)
+    M = np.array(matrix, dtype=np.float64, copy=False)[:4, :4]
+    t = np.trace(M)
+    if t > M[3, 3]:
+        q[3] = t
+        q[2] = M[1, 0] - M[0, 1]
+        q[1] = M[0, 2] - M[2, 0]
+        q[0] = M[2, 1] - M[1, 2]
+    else:
+        i, j, k = 0, 1, 2
+        if M[1, 1] > M[0, 0]:
+            i, j, k = 1, 2, 0
+        if M[2, 2] > M[i, i]:
+            i, j, k = 2, 0, 1
+        t = M[i, i] - (M[j, j] + M[k, k]) + M[3, 3]
+        q[i] = t
+        q[j] = M[i, j] + M[j, i]
+        q[k] = M[k, i] + M[i, k]
+        q[3] = M[k, j] - M[j, k]
+    q *= 0.5 / math.sqrt(t * M[3, 3])
+
+    return q.tolist()
 
 def check_same(a, b, tol):
     #print(a)
@@ -675,8 +772,11 @@ def drawJointAABB(joint, cid=0, botId=0):
     
     drawAABB(aabb[0], aabb[1])
 
-def checkAllowedContacts(conf, cid=0, botId=0):
+def checkAllowedContacts(conf, cid=0, botId=0, immobilise_fingers=True):
     set_joint_states(cid, botId, config.info.free_joints, conf, [0]*6)
+    if immobilise_fingers:
+        set_joint_states(cid, botId, config.FINGER_JOINTS, [0,0], [0]*2)
+        
     p.stepSimulation(cid)
 
     allowedContacts = True
@@ -684,7 +784,7 @@ def checkAllowedContacts(conf, cid=0, botId=0):
     for contact in (p.getContactPoints(physicsClientId=cid)):
         if not([contact[3], contact[4]] in config.NEVER_COLLIDE_NUMS and contact[1] == contact[2]):
             allowedContacts = False
-            
+            #print(contact[:5])
             if config.DEBUG:
                 print(contact)
 

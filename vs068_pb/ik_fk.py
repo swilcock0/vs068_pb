@@ -63,10 +63,10 @@ def getFK_FN():
 def getIK_FN():
     ''' Get the inverse kinematics function (depending on whether IKFast is built and available this may be analytical, req. VSC++ on Windows) '''
     if config.IKFAST_AVAILABLE:
-        def Fn(position=[0,0,0], orientation=[0,0,0,0], sampled=[], cid=0, *args, **kwargs):
-            return ikv.get_ik(position, matrix_from_quat(cid, orientation).tolist(), list(sampled))
+        def Fn(position=[0,0,0], orientation=[0,0,0,0], cid=0, *args, **kwargs):
+            return ikv.get_ik(position, matrix_from_quat(cid, orientation).tolist())
     else:
-        def Fn(position=[0,0,0], orientation=[1,0,0,0], sampled=[], cid=0, botId=0):
+        def Fn(position=[0,0,0], orientation=[1,0,0,0], cid=0, botId=0):
             return [list(p.calculateInverseKinematics(botId, config.EEF_ID, position, orientation, physicsClientId=cid)[0:6])]
 
     return Fn
@@ -109,8 +109,12 @@ def violates_limits(cid, botId, joint_indices, conf):
 #    print("Indices ", joint_indices)
 #    print("Config ", conf)
     for i in range(len(joint_indices)):
-        limits = get_joint_limits(cid, botId, joint_indices[i])
-        
+        if joint_indices[i] in config.info.free_joints:
+            index = config.info.free_joints.index(joint_indices[i])
+            limits = config.lower_lims[index], config.upper_lims[index]
+        else:
+            limits = get_joint_limits(cid, botId, joint_indices[i])
+            
         if conf[i] < limits[0] or conf[i] > limits[1]:
             #print("Limit {} < {} < {} invalid".format(limits[0], conf[i], limits[1]))
             return True
@@ -132,18 +136,18 @@ def violates_limits(cid, botId, joint_indices, conf):
 #     else:
 #         return random.choice(solutions)
 
-def get_valid_ik(pose, cid=0, botId=0, validate=True, **kwargs):
+def get_valid_ik(pose, cid=0, botId=0, validate=True, validate_collisions=True, get_one=False, **kwargs):
     #botId, cid = quick_load_bot()
     if config.DEBUG:
         print("")
         print("POSE : {}".format(pose))
     solutions = sample_ik(cid, botId, pose, **kwargs)
     if validate:
-        solutions = prune_invalid_poses(solutions, cid, botId,  **kwargs)
+        solutions = prune_invalid_poses(solutions, cid, botId, get_one, **kwargs)
 
     return solutions
 
-def sample_ik(cid, robot, pose, attempts=100, num_candidates=INF, epsilon=config.CART_TOL,  angle=config.ANGL_TOL, time_limit=INF, **kwargs):     
+def sample_ik(cid, robot, pose, attempts=100, num_candidates=INF, epsilon=config.CART_TOL, angle=config.ANGL_TOL, time_limit=INF, **kwargs):     
     gen_pose = get_modded_pose_generator(pose, epsilon=epsilon, angle=angle, **kwargs)
     solutions = []
     ikfast = getIK_FN()
@@ -176,7 +180,7 @@ def sample_ik(cid, robot, pose, attempts=100, num_candidates=INF, epsilon=config
         
     return solutions
 
-def prune_invalid_poses(poses, cid=0, botId=0, **kwargs):
+def prune_invalid_poses(poses, cid=0, botId=0, get_one=False, validate_collisions=True, **kwargs):
     valid = []
     for i in range(len(poses)):
         # TODO (swilcock0) : Does this need checking??
@@ -187,17 +191,24 @@ def prune_invalid_poses(poses, cid=0, botId=0, **kwargs):
             print("No valid poses found within joint limits")
         return []
     else:
-        valid_coll = []
-        #state_init = save_state(cid)
+        if validate_collisions:
+            valid_coll = []
+            #state_init = save_state(cid)
 
-        for i in range(len(valid)):
-            if checkAllowedContacts(valid[i], cid, botId):
-                valid_coll.append(valid[i])
-            
-        if config.DEBUG:
-            print("{} valid poses found within joint limits and allowed contacts.".format(len(valid_coll)))
-    
-        #restore_state(state_init, cid)
-        return valid_coll
+            for i in range(len(valid)):
+                if checkAllowedContacts(valid[i], cid, botId):
+                    valid_coll.append(valid[i])
+                    if get_one:
+                        break
+                
+            if config.DEBUG:
+                print("{} valid poses found within joint limits and allowed contacts.".format(len(valid_coll)))
+        
+            #restore_state(state_init, cid)
+            return valid_coll
+        else:
+            if config.DEBUG:
+                print("{} valid poses found within joint limits.".format(len(valid)))
+            return valid
 
 #################
