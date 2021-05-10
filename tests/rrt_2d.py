@@ -1,6 +1,7 @@
 from vs068_pb.rrt import rrt, configs, TreeNode
 from vs068_pb.rrt_connect import rrt_connect
 from vs068_pb.rrt_star import rrt_star, OptimalNode
+from vs068_pb.rrt_star_connect import birrt_star
 from vs068_pb.utils import randomize
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -8,17 +9,19 @@ import matplotlib.patches as patches
 RRT = 1
 RRT_Connect = 2
 RRT_Star = 3
+BIRRT_Star = 4
 
 def get_planner(select=RRT_Connect):
     switcher = {
         RRT : rrt,
         RRT_Connect : rrt_connect,
-        RRT_Star : rrt_star
+        RRT_Star : rrt_star,
+        BIRRT_Star : birrt_star
     }
 
     return switcher.get(select)
 
-planner = get_planner(RRT_Star)
+planner = get_planner(BIRRT_Star)
 
 
 plot_tree=True
@@ -42,9 +45,9 @@ start = [0,0]
 end = [5,5]
 
 if plot_tree:
-    path, _, nodes = planner(start, end, collision_fn, step=0.5, n_it=10000, time_limit=30.0, return_tree=True, limits=[[0,0], [10,10]], rad=1.0)
+    path, _, nodes = planner(start, end, collision_fn, step=0.5, n_it=1000, time_limit=3.0, return_tree=True, limits=[[0,0], [10,10]], rad=1.0)
 else:
-    path, _, nodes = planner(start, end, collision_fn, step=0.5, n_it=10000, time_limit=30.0, limits=[[0,0], [10,10]], rad=1.0), []
+    path, _, nodes = planner(start, end, collision_fn, step=0.5, n_it=1000, time_limit=3.0, limits=[[0,0], [10,10]], rad=1.0), []
 
 fig, ax = plt.subplots()
 

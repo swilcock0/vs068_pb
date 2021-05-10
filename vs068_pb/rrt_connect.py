@@ -39,7 +39,7 @@ def get_extend_fn(obstacles=[]):
 # SWAP(Ta, Tb);
 
 def rrt_connect(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=True, tolerance=0.01, return_tree=False, \
-    limits=[config.lower_lims, config.upper_lims],\
+    limits=[config.lower_lims, config.upper_lims], greedy_prob=0.2,\
     time_limit = 5.0, step = 0.1, n_it = 100, visualise=0, **kwargs):
     config.DEBUG = False
     extend_fn, roadmap = get_extend_fn()
@@ -66,7 +66,7 @@ def rrt_connect(current_conf, desired_conf, collision_fn = lambda q: False, tool
     dist_fun = get_dist_fn(tool_space)
 
     generator = interval_generator(limits[0], limits[1], use_halton=True)
-
+    rand_num = uniform_generator(1)
     connect = True
 
     for counter in range(int(n_it)):
@@ -85,9 +85,11 @@ def rrt_connect(current_conf, desired_conf, collision_fn = lambda q: False, tool
             nodes_to = nodes_list[0]
             backwards = True
     
-
-        new_conf = next(generator)
-
+        if next(rand_num)[0] < greedy_prob or counter == 0:
+            new_conf = nodes_to[0].config#next(generator_goal)
+        else:
+            new_conf = next(generator)
+        
         connect = True
         # Get closest in active tree and extend from it
         last, smallest = argmin(lambda n: dist_fun(n, new_conf), nodes)

@@ -126,6 +126,7 @@ def rrt_star(current_conf, desired_conf, collision_fn = lambda q: False, informe
     bias = True
     closest = None
     power = 1/len(current_conf)
+    found = False
 
     if tool_space and isinstance(tolerance, (int, float)):
         tolerance = [tolerance, tolerance*10]
@@ -185,6 +186,7 @@ def rrt_star(current_conf, desired_conf, collision_fn = lambda q: False, informe
             nearest.config, path[-1]), path=path[:-1], iteration=counter)
         # if safe and do_goal:
         if (dist_fun(new.config, desired_conf) < EPSILON):
+            found = True
             closest = new
             closest.set_solution(True)
             closest_dist = dist_fun(closest.config, desired_conf)
@@ -193,13 +195,14 @@ def rrt_star(current_conf, desired_conf, collision_fn = lambda q: False, informe
         nodes.append(new)
         #print("{} neighbours".format(len(list(neighbors))))
 
-        for i in range(2):
-            for n in neighbors:
-                d = dist_fun(n.config, new.config)
-                if (n.cost + d) < new.cost:
-                    path = safe_path(extend_fn(n.config, new.config), collision_fn)
-                    if (len(path) != 0) and (dist_fun(new.config, path[-1]) < EPSILON):
-                        new.rewire(n, d, path[:-1], iteration=counter)
+        if found:
+            for i in range(2):
+                for n in neighbors:
+                    d = dist_fun(n.config, new.config)
+                    if (n.cost + d) < new.cost:
+                        path = safe_path(extend_fn(n.config, new.config), collision_fn)
+                        if (len(path) != 0) and (dist_fun(new.config, path[-1]) < EPSILON):
+                            new.rewire(n, d, path[:-1], iteration=counter)
 
     if counter >= n_it-1:
         print("RRT*: Maxed out iterations.")
