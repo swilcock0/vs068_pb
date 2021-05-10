@@ -1,9 +1,24 @@
-from vs068_pb.rrt import rrt, configs
+from vs068_pb.rrt import rrt, configs, TreeNode
 from vs068_pb.rrt_connect import rrt_connect
-from vs068_pb.rrt_star import rrt_star
+from vs068_pb.rrt_star import rrt_star, OptimalNode
 from vs068_pb.utils import randomize
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+
+RRT = 1
+RRT_Connect = 2
+RRT_Star = 3
+
+def get_planner(select=RRT_Connect):
+    switcher = {
+        RRT : rrt,
+        RRT_Connect : rrt_connect,
+        RRT_Star : rrt_star
+    }
+
+    return switcher.get(select)
+
+planner = get_planner(RRT_Star)
 
 
 plot_tree=True
@@ -27,16 +42,20 @@ start = [0,0]
 end = [5,5]
 
 if plot_tree:
-    path, _, nodes = rrt_connect(start, end, collision_fn, step=0.5, n_it=1000, time_limit=10.0, return_tree=True, limits=[[0,0], [10,10]])
+    path, _, nodes = planner(start, end, collision_fn, step=0.5, n_it=10000, time_limit=30.0, return_tree=True, limits=[[0,0], [10,10]], rad=1.0)
 else:
-    path, _, nodes = rrt_connect(start, end, collision_fn, step=0.5, n_it=1000, time_limit=10.0, limits=[[0,0], [10,10]]), []
+    path, _, nodes = planner(start, end, collision_fn, step=0.5, n_it=10000, time_limit=30.0, limits=[[0,0], [10,10]], rad=1.0), []
 
 fig, ax = plt.subplots()
 
 nodes = randomize(nodes)
 
 for node in nodes[:-1]: # Can limit the amount of nodes displayed
-    path_a = configs(node.retrace())
+    if isinstance(nodes[-1], TreeNode):
+        path_a = configs(node.retrace())
+    else:
+        path_a = node.retrace()
+
     x = [p[0] for p in path_a]
     y = [p[1] for p in path_a]   
 

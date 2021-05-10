@@ -12,6 +12,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as io
 from math import radians
+from stl import mesh
 
 from vs068_pb.ik_fk import get_valid_ik
 from vs068_pb.utils import quick_load_bot, Disconnect, get_link_pose, Pose, set_joint_positions#, PlotlyViewer
@@ -148,12 +149,12 @@ class Reachability(object):
 
     def load_data(self, file=None):
         if file == None:
-            file = self.reach_file
+            file = self.reach_file_collisions
         
         with open(file + '.pickle', mode='rb') as handle:
             self.data = pickle.load(handle)
 
-    def view_data(self, every=1, pybullet_view=True, output_html=False):
+    def view_data(self, every=1, pybullet_view=False, output_html=False):
         x = [d[0] for d in self.data]
         y = [d[1] for d in self.data]
         z = [d[2] for d in self.data]
@@ -168,6 +169,21 @@ class Reachability(object):
             c = c[::int(every)]
 
         if config.PLOTLY_AVAILABLE:
+            my_mesh = mesh.Mesh.from_file(os.path.join(config.src_fldr, "meshes", "full.stl"))
+            def stl2mesh3d(stl_mesh):
+                # stl_mesh is read by nympy-stl from a stl file; it is  an array of faces/triangles (i.e. three 3d points) 
+                # this function extracts the unique vertices and the lists I, J, K to define a Plotly mesh3d
+                p, q, r = stl_mesh.vectors.shape #(p, 3, 3)
+                # the array stl_mesh.vectors.reshape(p*q, r) can contain multiple copies of the same vertex;
+                # extract unique vertices from all mesh triangles
+                vertices, ixr = np.unique(stl_mesh.vectors.reshape(p*q, r), return_inverse=True, axis=0)
+                I = np.take(ixr, [3*k for k in range(p)])
+                J = np.take(ixr, [3*k+1 for k in range(p)])
+                K = np.take(ixr, [3*k+2 for k in range(p)])
+                return vertices, I, J, K
+
+
+
             df = pd.DataFrame({'X' : x, 'Y' : y, 'Z' : z, 'Reachability' : c})
 
             fig = go.Figure()
@@ -175,7 +191,9 @@ class Reachability(object):
             fig.add_trace(
                 go.Scatter3d(
                     x=df[df['Y']<0]['X'], y=df[df['Y']<0]['Y'], z=df[df['Y']<0]['Z'], 
-                    mode ='markers', 
+                    mode ='markers',
+                    customdata=df[df['Y']<0]['Reachability'], 
+                    hovertemplate='<b>x:%{x:.3f}</b><br><b>y:%{y:.3f}</b><br><b>z: %{z:.3f}</b> <br>reach: %{customdata:.2f} ',
                     marker=dict(
                         color=df[df['Y']<0]['Reachability'], 
                         colorscale='RdYlGn',
@@ -184,6 +202,7 @@ class Reachability(object):
                             title="Reachability"
                         )
                     ),
+                    name="Half reach",
                     visible=False
                 )
             )
@@ -191,6 +210,8 @@ class Reachability(object):
                 go.Scatter3d(
                     x=df['X'], y=df['Y'], z=df['Z'],
                     mode ='markers', 
+                    customdata=df['Reachability'],
+                    hovertemplate='<b>x:%{x:.3f}</b><br><b>y:%{y:.3f}</b><br><b>z: %{z:.3f}</b> <br>reach: %{customdata:.2f} ',
                     marker=dict(
                         color=df['Reachability'], 
                         colorscale='RdYlGn',
@@ -198,68 +219,81 @@ class Reachability(object):
                             x=1.02,
                             title="Reachability"
                         )
-                    )
+                    ),
+                    name="Full reach"
                 )
             )
             fig.add_trace(
                 go.Scatter3d(
-                    x=df[df['Z']<0.8]['X'], y=df[df['Z']<0.8]['Y'], z=df[df['Z']<0.8]['Z'],
+                    x=df[df['Z']<0.65]['X'], y=df[df['Z']<0.65]['Y'], z=df[df['Z']<0.65]['Z'],
                     mode ='markers', 
+                    customdata=df[df['Z']<0.65]['Reachability'],
+                    hovertemplate='<b>x:%{x:.3f}</b><br><b>y:%{y:.3f}</b><br><b>z: %{z:.3f}</b> <br>reach: %{customdata:.2f} ',
                     marker=dict(
-                        color=df[df['Z']<0.8]['Reachability'], 
+                        color=df[df['Z']<0.65]['Reachability'], 
                         colorscale='RdYlGn',
                         colorbar=dict(
                             x=1.02,
                             title="Reachability"
                         )
                     ),
-                    visible=False
+                    visible=False,
+                    name="Bottom reach",
                 )
             )
 
-            steps = []
-            for i in range(10):
-                step = dict(
-                    method="update",
-                    args=[
-                        {
-                            "x" : df[df['X']<i/20]['X'],
-                            "y" : df[df['X']<i/20]['Y'],
-                            "z" : df[df['X']<i/20]['Z']
-                        }
-                    ]
-                )
-                steps.append(step)
+            vertices, I, J, K = stl2mesh3d(my_mesh)
+            x, y, z = vertices.T
+            x = x/100
+            y = y/100
+            z = z/100
+            mesh3D = go.Mesh3d(
+                x=x,
+                y=y,
+                z=z, 
+                i=I, 
+                j=J, 
+                k=K, 
+                flatshading=True,
+                name='VS068',
+                showscale=False,
+                visible=False)
+            
+            fig.add_trace(mesh3D)
 
+            
             fig.update_layout(
-                sliders=[
-                    dict(
-                        active=5,
-                        currentvalue={"prefix": "Frequency: "},
-                        pad={"t": 50},
-                        steps=steps)
-                ],
                 updatemenus=[
                     dict(
                         type = "buttons",
                         direction = "left",
                         buttons=list([
                             dict(
-                                args=[{"visible": [False, True, False],
+                                args=[{"visible": [False, True, False, True],
                                     "title": "Reachability : Full"}],
                                 label="Full",
                                 method="update"
                             ),
                             dict(
-                                args=[{"visible": [True, False, False],
+                                args=[{"visible": [True, False, False, True],
                                     "title": "Reachability : Half"}],
                                 label="Half",
                                 method="update"
                             ),
                             dict(
-                                args=[{"visible": [False, False, True],
+                                args=[{"visible": [False, False, True, False],
                                     "title": "Reachability : Top"}],
                                 label="Bottom",
+                                method="update"
+                            ),
+                            dict(
+                                args=[{"visible": [False, False, False, True],
+                                    "title": "Arm",
+                                    "xaxis" : {"domain" : [-1.5,1.5]},
+                                    "yaxis" : {"domain" : [-1.5,1.5]},
+                                    "zaxis" : {"domain" : [-1.5,1.5]},
+                                }],
+                                label="Robot",
                                 method="update"
                             )
                         ]),
@@ -272,7 +306,8 @@ class Reachability(object):
                     ),
                 ],
                 title="Reachability Map",
-                title_x=0.5
+                title_x=0.5,
+                scene=dict(aspectmode='data')
             )
 
             fig.show(renderer="browser")#pv = PlotlyViewer(fig)
@@ -361,8 +396,8 @@ if __name__ == "__main__":
     if preload:
         test.load_data(file=test.reach_file_collisions)  
     else:
-        # test.generate_map(collisions=False)
-        # test.dump_data(file=test.reach_file)
+        test.generate_map(collisions=False)
+        test.dump_data(file=test.reach_file)
 
         test.generate_map(collisions=True)
         test.dump_data(file=test.reach_file_collisions)
@@ -370,5 +405,5 @@ if __name__ == "__main__":
         # For overnight run, hibernate after
         #os.system("Rundll32.exe Powrprof.dll,SetSuspendState Sleep")
 
-    test.view_data(every=1, pybullet_view=False)
+    test.view_data()
 
