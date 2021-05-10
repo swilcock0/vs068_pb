@@ -10,6 +10,7 @@ from matplotlib.colors import LinearSegmentedColormap
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.io as io
 from math import radians
 
 from vs068_pb.ik_fk import get_valid_ik
@@ -28,9 +29,9 @@ class Reachability(object):
         print("Building reachability map...")
         config.DEBUG = False
         botId, cid = quick_load_bot()
-        workspace_min = -0.85
-        workspace_max = 0.85
-        z_min = -0.2   
+        workspace_min = -0.95
+        workspace_max = 0.95
+        z_min = -0.4   
         z_max = 1.5
         discretisation = 50*(1e-3) # 5 cm
         self.data = []
@@ -152,7 +153,7 @@ class Reachability(object):
         with open(file + '.pickle', mode='rb') as handle:
             self.data = pickle.load(handle)
 
-    def view_data(self, every=1):
+    def view_data(self, every=1, output_html=False):
         x = [d[0] for d in self.data]
         y = [d[1] for d in self.data]
         z = [d[2] for d in self.data]
@@ -252,6 +253,9 @@ class Reachability(object):
             )
 
             fig.show(renderer="browser")#pv = PlotlyViewer(fig)
+
+            if output_html:
+                io.write_html(fig, os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', "resources", "Reach.html"), include_plotlyjs='cdn', auto_open=True)
         else:
             fig = plt.figure()
             ax = plt.axes(projection='3d')
@@ -278,14 +282,9 @@ if __name__ == "__main__":
 
         test.generate_map(collisions=True)
         test.dump_data(file=test.reach_file_collisions)
-        #test.dump_data(file=test.reach_file_collisions + ".VERBOSE", data=test.verbose_data) # Seems like this may crash due to the massive data size
         
         # For overnight run, hibernate after
-        os.system("Rundll32.exe Powrprof.dll,SetSuspendState Sleep")
+        #os.system("Rundll32.exe Powrprof.dll,SetSuspendState Sleep")
 
-  
-    # data = sorted(test.data, key=lambda x: x[3])
-    # for datum in data:
-    #     print(datum)
-    
     test.view_data(every=1)
+    
