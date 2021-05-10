@@ -236,7 +236,7 @@ class Reachability(object):
                             dict(
                                 args=[{"visible": [False, False, True],
                                     "title": "Reachability : Top"}],
-                                label="Top",
+                                label="Bottom",
                                 method="update"
                             )
                         ]),
