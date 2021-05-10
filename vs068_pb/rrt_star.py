@@ -14,6 +14,7 @@ import numpy as np
 
 class OptimalNode(object):
     def __init__(self, config, parent=None, d=0, path=[], iteration=None):
+        self.fk = getFK_FN()
         self.config = config
         self.parent = parent
         self.children = set()
@@ -27,6 +28,7 @@ class OptimalNode(object):
         self.solution = False
         self.creation = iteration
         self.last_rewire = iteration
+        self.pose = []
 
     def set_solution(self, solution):
         if self.solution is solution:
@@ -57,6 +59,12 @@ class OptimalNode(object):
         self.cost = self.parent.cost + self.d
         for n in self.children:
             n.update()
+
+    def getPose(self):
+        if self.pose == []:
+            self.pose = self.fk(self.config)
+        return self.pose
+
 
 def safe_path(sequence, collision):
     path = []
@@ -95,8 +103,8 @@ def safe_path(sequence, collision):
 
 #From tests, gamma values of 0.615 and 1.65 are indicated
 
-def rrt_star(current_conf, desired_conf, collision_fn = lambda q: False, informed=True, tool_space=True, tolerance=0.01, time_limit = 1.0, step = 0.01, n_it = 100, \
-        visualise=0, greedy_prob = 0.2, limits=[config.lower_lims, config.upper_lims], return_tree=False, gamma = 1.65, **kwargs):
+def rrt_star(current_conf, desired_conf, collision_fn = lambda q: False, informed=True, tool_space=False, tolerance=0.01, time_limit = 1.0, step = 0.01, n_it = 100, \
+        visualise=0, greedy_prob = 0.2, limits=[config.lower_lims, config.upper_lims], return_tree=False, gamma = 1.65, rad=None, **kwargs):
     config.DEBUG = False
     extend_fn, roadmap = get_extend_fn()
     
@@ -118,6 +126,7 @@ def rrt_star(current_conf, desired_conf, collision_fn = lambda q: False, informe
     bias = True
     closest = None
     power = 1/len(current_conf)
+    found = False
 
     if tool_space and isinstance(tolerance, (int, float)):
         tolerance = [tolerance, tolerance*10]
@@ -140,7 +149,10 @@ def rrt_star(current_conf, desired_conf, collision_fn = lambda q: False, informe
     collisions = 0
     not_collisions = 0
     for counter in range(int(n_it)):
-        radius = gamma*(np.log(len(nodes))/len(nodes))**power
+        if rad == None:
+            radius = gamma*(np.log(len(nodes))/len(nodes))**power
+        else:
+            radius = max(gamma*(np.log(len(nodes))/len(nodes))**power, rad)
         # Don't go on for too long
         elapsed = time.time() - start_time
         if elapsed > time_limit:
@@ -174,6 +186,7 @@ def rrt_star(current_conf, desired_conf, collision_fn = lambda q: False, informe
             nearest.config, path[-1]), path=path[:-1], iteration=counter)
         # if safe and do_goal:
         if (dist_fun(new.config, desired_conf) < EPSILON):
+            found = True
             closest = new
             closest.set_solution(True)
             closest_dist = dist_fun(closest.config, desired_conf)
@@ -182,13 +195,14 @@ def rrt_star(current_conf, desired_conf, collision_fn = lambda q: False, informe
         nodes.append(new)
         #print("{} neighbours".format(len(list(neighbors))))
 
-        for i in range(2):
-            for n in neighbors:
-                d = dist_fun(n.config, new.config)
-                if (n.cost + d) < new.cost:
-                    path = safe_path(extend_fn(n.config, new.config), collision_fn)
-                    if (len(path) != 0) and (dist_fun(new.config, path[-1]) < EPSILON):
-                        new.rewire(n, d, path[:-1], iteration=counter)
+        if found:
+            for i in range(2):
+                for n in neighbors:
+                    d = dist_fun(n.config, new.config)
+                    if (n.cost + d) < new.cost:
+                        path = safe_path(extend_fn(n.config, new.config), collision_fn)
+                        if (len(path) != 0) and (dist_fun(new.config, path[-1]) < EPSILON):
+                            new.rewire(n, d, path[:-1], iteration=counter)
 
     if counter >= n_it-1:
         print("RRT*: Maxed out iterations.")
