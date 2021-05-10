@@ -219,7 +219,7 @@
                 <parent link="link5" />
                 <child link="end_effector" />
                 <axis xyz="0 0 1" />
-                <limit lower="-3.1" upper="3.1" effort="100000" velocity="12.566" />
+                <limit lower="-6.283" upper="6.283" effort="100000" velocity="12.566" />
         </joint>
 
         <link name="end_effector">

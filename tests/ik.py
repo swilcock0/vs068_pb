@@ -7,6 +7,7 @@ from vs068_pb.config import set_IKFAST
 import vs068_pb.config as config
 from vs068_pb.utils import Disconnect, check_same, quick_load_bot, set_joint_states, quat_from_euler, save_state, restore_state, Pose, loadFloor, Camera
 from pybullet import GUI
+import pybullet as p
 import time
 from math import degrees, radians
 
@@ -29,12 +30,17 @@ append_if_non_empty(
 
 append_if_non_empty(
     solutions,
-    get_valid_ik(pose=Pose([0,0,1.4], [radians(180),radians(0),radians(0)]), cid=cid, botId=botId, validate=True, attempts=10000, num_candidates=100)
+    get_valid_ik(pose=Pose([0,0,0.9], [radians(180),radians(0),radians(0)]), cid=cid, botId=botId, validate=False, attempts=10000)
     )
 
 append_if_non_empty(
     solutions,
-    get_valid_ik(pose=Pose([0.3,0.3,0.3], [radians(90), radians(90),radians(90)]), cid=cid, botId=botId, validate=True, attempts=10000, num_candidates=100)
+    get_valid_ik(pose=Pose([0,0,1.4], [radians(180),radians(0),radians(-90)]), cid=cid, botId=botId, validate=True, attempts=10000, num_candidates=100)
+    )
+
+append_if_non_empty(
+    solutions,
+    get_valid_ik(pose=Pose([0.3,0.3,0.3], [radians(0), radians(0),radians(0)]), cid=cid, botId=botId, validate=True, attempts=10000, num_candidates=100)
     )
 
 

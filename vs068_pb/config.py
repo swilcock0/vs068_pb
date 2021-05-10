@@ -12,6 +12,12 @@ try:
 except ModuleNotFoundError:
     IKFAST_AVAILABLE = False
 
+try:
+    import plotly
+    PLOTLY_AVAILABLE = True
+except ModuleNotFoundError:
+    PLOTLY_AVAILABLE = False
+
 # Get screen dimensions
 root = tk.Tk()
 screen_width = root.winfo_screenwidth()
@@ -50,8 +56,8 @@ TEST_COLLISIONS_VERBOSE=False
 
 CART_TOL = 0.005
 ANGL_TOL = radians(1)
-lower_lims = [-2.9671, -1.74533, -2.0944, -4.71239, -2.0944, -3.1]
-upper_lims=[2.9671, 2.35619, 2.6529, 4.71239, 2.0944, 3.1]
+lower_lims = [-2.9671, -1.74533, -2.0944, -4.71239, -2.0944, -6.283]
+upper_lims=[2.9671, 2.35619, 2.6529, 4.71239, 2.0944, 6.283]
 
 IKFastInfo = namedtuple('IKFastInfo', ['module_name', 'base_link', 'ee_link', 'free_joints'])
 info = IKFastInfo(module_name='vs068_ikfast', base_link=0, ee_link=8, free_joints=[2, 3, 4, 5, 6, 7])

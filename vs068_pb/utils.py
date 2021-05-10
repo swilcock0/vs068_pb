@@ -9,10 +9,35 @@ from numpy import array, concatenate
 import sys
 import os
 import pybullet_data
+# from PyQt5.QtWidgets import QApplication
+# from PyQt5.QtCore import QUrl
+# from PyQt5 import QtWebEngineWidgets
 
+_EPS = np.finfo(float).eps * 4.0
 INF = config.INF
 '''pyBullet convenience functions'''
 
+# class PlotlyViewer(QtWebEngineWidgets.QWebEngineView):
+#     def __init__(self, fig, exec=True):
+#         import plotly.offline
+#         import os, sys
+
+#         # Create a QApplication instance or use the existing one if it exists
+#         self.app = QApplication.instance() if QApplication.instance() else QApplication(sys.argv)
+
+#         super().__init__()
+
+#         self.file_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "temp.html"))
+#         plotly.offline.plot(fig, filename=self.file_path, auto_open=False)
+#         self.load(QUrl.fromLocalFile(self.file_path))
+#         self.setWindowTitle("Plotly Viewer")
+#         self.show()
+
+#         if exec:
+#             self.app.exec_()
+
+#     def closeEvent(self, event):
+#         os.remove(self.file_path)
 
 class HideOutput(object):
     '''
@@ -51,7 +76,21 @@ class HideOutput(object):
         os.close(self._oldstdout_fno) # Added
 
 def quat_from_euler(euler):
-    return p.getQuaternionFromEuler(euler) # TODO: extrinsic (static) vs intrinsic (rotating)
+    #return p.getQuaternionFromEuler(euler) # TODO: extrinsic (static) vs intrinsic (rotating)
+    x,y,z = euler
+    cx = np.cos(x * 0.5)
+    sx = np.sin(x * 0.5)
+    cy = np.cos(y * 0.5)
+    sy = np.sin(y * 0.5)
+    cz = np.cos(z * 0.5)
+    sz = np.sin(z * 0.5)
+
+    qx = (sx * cy * cz) - (cx * sy * sz)
+    qy = (cx * sy * cz) + (sx * cy * sz)
+    qz = (cx * cy * sz) - (sx * sy * cz)
+    qw = (cx * cy * cz) + (sx * sy * cz)
+
+    return qx, qy, qz, qw   
 
 def euler_from_quat(quat):
     return p.getEulerFromQuaternion(quat) # rotation around fixed axis
@@ -136,6 +175,7 @@ def Step(steps = 10000, sleep = 1, cid=0, botId=0):
         if p.readUserDebugParameter(config.params['button'], cid) > config.buttonsave:
             controltype = abs(controltype - 1)
             config.buttonsave = p.readUserDebugParameter(config.params['button'], cid)
+            print(get_link_pose(botId, 8))
              
         # Select the controller type based on button history
         if controltype == 0:
@@ -155,6 +195,10 @@ def Step(steps = 10000, sleep = 1, cid=0, botId=0):
         # Add the line if DEBUG is True in config.params at top
         if config.DEBUG:
             DrawEEFLine(botId, cid)
+
+        for contact in (p.getContactPoints(physicsClientId=cid)):
+            if not([contact[3], contact[4]] in config.NEVER_COLLIDE_NUMS and contact[1] == contact[2]):
+                print("Contact : {}".format(contact[:5]))
             
 
 
@@ -283,8 +327,62 @@ def restore_bullet(filename, cid):
 
 #####################################
 
-def matrix_from_quat(cid, quat):
+def matrix_from_quat(cid, quat=[0,0,0,0]):
+    """Return homogeneous rotation matrix from quaternion.
+    >>> R = quaternion_matrix([0.06146124, 0, 0, 0.99810947])
+    >>> numpy.allclose(R, rotation_matrix(0.123, (1, 0, 0)))
+    True
+    """
     return np.array(p.getMatrixFromQuaternion(quat, physicsClientId=cid)).reshape(3, 3)
+
+    # import math
+
+    # q = np.array(quat[:4], dtype=np.float64, copy=True)
+    # nq = np.dot(q, q)
+    # if nq < _EPS:
+    #     return np.identity(4)
+    # q *= math.sqrt(2.0 / nq)
+    # q = np.outer(q, q)
+    # return np.array((
+    #     (1.0-q[1, 1]-q[2, 2],     q[0, 1]-q[2, 3],     q[0, 2]+q[1, 3]),
+    #     (    q[0, 1]+q[2, 3], 1.0-q[0, 0]-q[2, 2],     q[1, 2]-q[0, 3]),
+    #     (    q[0, 2]-q[1, 3],     q[1, 2]+q[0, 3], 1.0-q[0, 0]-q[1, 1])
+    #     ), dtype=np.float64)
+
+def quat_from_matrix(matrix):
+    """Return quaternion from rotation matrix.
+    >>> R = rotation_matrix(0.123, (1, 2, 3))
+    >>> q = quaternion_from_matrix(R)
+    >>> numpy.allclose(q, [0.0164262, 0.0328524, 0.0492786, 0.9981095])
+    True
+    """
+    matrix[0].append(0)
+    matrix[1].append(0)
+    matrix[2].append(0)
+    matrix.append([0,0,0,1])
+    import math
+    q = np.empty((4, ), dtype=np.float64)
+    M = np.array(matrix, dtype=np.float64, copy=False)[:4, :4]
+    t = np.trace(M)
+    if t > M[3, 3]:
+        q[3] = t
+        q[2] = M[1, 0] - M[0, 1]
+        q[1] = M[0, 2] - M[2, 0]
+        q[0] = M[2, 1] - M[1, 2]
+    else:
+        i, j, k = 0, 1, 2
+        if M[1, 1] > M[0, 0]:
+            i, j, k = 1, 2, 0
+        if M[2, 2] > M[i, i]:
+            i, j, k = 2, 0, 1
+        t = M[i, i] - (M[j, j] + M[k, k]) + M[3, 3]
+        q[i] = t
+        q[j] = M[i, j] + M[j, i]
+        q[k] = M[k, i] + M[i, k]
+        q[3] = M[k, j] - M[j, k]
+    q *= 0.5 / math.sqrt(t * M[3, 3])
+
+    return q.tolist()
 
 def check_same(a, b, tol):
     #print(a)
@@ -320,6 +418,13 @@ def multiply(*poses):
         pose = p.multiplyTransforms(pose[0], pose[1], *next_pose)
     return pose
 
+def get_link_pose(botId, link):
+    # TODO (swilcock0) : Better integration with IKFAST, see getFK_FN
+    state = p.getLinkState(botId, link)
+    pos = state[0]
+    orn = state[1]
+    
+    return pos, orn
 
 def get_length(vec, norm=2):
     return np.linalg.norm(vec, ord=norm)
@@ -572,7 +677,7 @@ def quick_load_bot(mode=p.DIRECT, physicsClient=-1, collisions = True):
         if collisions:
             botId = p.loadURDF(config.urdf, startPos, startOrientation, useFixedBase=1, flags=p.URDF_USE_SELF_COLLISION)
         else:    
-                        botId = p.loadURDF(config.urdf, startPos, startOrientation, useFixedBase=1, flags=p.URDF_IGNORE_COLLISION_SHAPES)
+            botId = p.loadURDF(config.urdf, startPos, startOrientation, useFixedBase=1, flags=p.URDF_IGNORE_COLLISION_SHAPES)
 
         return botId, physicsClient
 
@@ -667,16 +772,19 @@ def drawJointAABB(joint, cid=0, botId=0):
     
     drawAABB(aabb[0], aabb[1])
 
-def checkAllowedContacts(conf, cid=0, botId=0):
+def checkAllowedContacts(conf, cid=0, botId=0, immobilise_fingers=True):
     set_joint_states(cid, botId, config.info.free_joints, conf, [0]*6)
+    if immobilise_fingers:
+        set_joint_states(cid, botId, config.FINGER_JOINTS, [0,0], [0]*2)
+        
     p.stepSimulation(cid)
 
     allowedContacts = True
 
     for contact in (p.getContactPoints(physicsClientId=cid)):
-        if ([contact[3], contact[4]] not in config.NEVER_COLLIDE_NUMS):
+        if not([contact[3], contact[4]] in config.NEVER_COLLIDE_NUMS and contact[1] == contact[2]):
             allowedContacts = False
-            
+            #print(contact[:5])
             if config.DEBUG:
                 print(contact)
 
@@ -686,28 +794,33 @@ def loadFloor(cid=0):
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
     planeId = p.loadURDF("plane.urdf", physicsClientId=cid)
 
-def create_box_collisions(dims, pos, safety=1.2):
+    return planeId
+
+def create_box_collisions(dims, pos, safety=0.05):
     ''' 
     Creates box collision and visual functions
 
     Example usage:
     dims = [[0.2, 0.2, 0.2], [0.1, 0.1, 1.2], [0.1, 0.1, 1.2]]
     pos = [[0.3,0.3,0.7], [-0.25, -0.25, 0.6], [-0.25, 0.25, 0.6]]
-    collision_fn, visual_fn = create_box_collisions(dims, pos, safety=1.2)
-    Gives a 20% safety boundary on sides
+    collision_fn, visual_fn = create_box_collisions(dims, pos, safety=0.05)
+    Gives a 5cm safety boundary on sides
 
     Remember to Disconnect after using or their may be artifacts in display
     '''
 
     Disconnect()
     botId, cid = quick_load_bot(mode=p.DIRECT)
-    
+    planeId = loadFloor(cid)
+
+    bodies = {botId : "Bot", planeId : "Floor"}
+
     allowed = []
 
     for i in range(len(dims)):
         box_lower = [pos[i][j] - dims[i][j]/2 for j in range(3)]
         box_upper = [pos[i][j] + dims[i][j]/2 for j in range(3)]
-        box_halfs = [safety*abs(box_upper[i] - box_lower[i])/2 for i in range(3)]
+        box_halfs = [safety+abs(box_upper[i] - box_lower[i])/2 for i in range(3)]
         #print(box_halfs)
         box_centre = [box_lower[i] + box_halfs[i] for i in range(3)] 
 
@@ -719,7 +832,7 @@ def create_box_collisions(dims, pos, safety=1.2):
                             )
 
         test_body = p.createMultiBody(baseMass=0, baseCollisionShapeIndex=box_col, basePosition = box_centre, physicsClientId=cid)
-        #print("Box : ID {} ".format(test_body))
+        bodies.update({test_body : "Box_"+str(i+1)})
     
     set_joint_states(cid, botId, config.info.free_joints, [0]*6, [0]*6)
     p.stepSimulation(cid)
@@ -727,14 +840,34 @@ def create_box_collisions(dims, pos, safety=1.2):
     for contact in (p.getContactPoints(physicsClientId=cid)):
         if (([contact[3], contact[4]] not in config.NEVER_COLLIDE_NUMS) and contact[1] != contact[2]):                
             allowed.append(contact[:5])
+    
+    print("Scene : {}".format(bodies))
+    
+    def pretty_print_contact(contact, boxes_only=False):
+        if boxes_only:
+            reversed_dictionary = {value : key for (key, value) in bodies.items()}
 
+            if (contact[1] == reversed_dictionary["Floor"] or contact[1] == reversed_dictionary["Bot"]) and (contact[2] == reversed_dictionary["Floor"] or contact[2] == reversed_dictionary["Bot"]):
+                return False
 
-    def check_contacts_against_init(a, allowed=allowed):
-        #print(allowed)
+        contact_a_name = bodies.get(contact[1], "Unknown")
+        contact_b_name = bodies.get(contact[2], "Unknown")
+        link_a_id = contact[3]
+        link_b_id = contact[4]
+        print("Contact: {}:{} - {}:{}".format(contact_a_name, link_a_id, contact_b_name, link_b_id))
+        return True
+
+    if allowed != []:
+        print("Initial collisions : ")
+        for contact in allowed:
+            pretty_print_contact(contact)
+        print("... will be ignored throughout.")
+
+    def check_contacts_against_init(contact, allowed=allowed):
         if contact[:5] in allowed:
-            # print(contact[:5])
-            # print(allowed)
-            # input()
+            if config.TEST_COLLISIONS_VERBOSE:
+                print("Allowed:")
+                pretty_print_contact(contact)
             return False
         else:
             return True
@@ -746,17 +879,22 @@ def create_box_collisions(dims, pos, safety=1.2):
         p.stepSimulation(cid)
         allowedContacts = True
 
+        contacts = p.getContactPoints(physicsClientId=cid)
+
         for contact in (p.getContactPoints(physicsClientId=cid)):
-            if (([contact[3], contact[4]] not in config.NEVER_COLLIDE_NUMS) and contact[1] != contact[2]) and check_contacts_against_init(contact):                
+            if (([contact[3], contact[4]] not in config.NEVER_COLLIDE_NUMS) and contact[1] != contact[2]) and check_contacts_against_init(contact[:5]):                
                 allowedContacts = False
                 if config.TEST_COLLISIONS_VERBOSE:
-                    print("Blocked : {}".format(contact[:5]))
+                    print("Blocked")
+                    pretty_print_contact(contact)
 
         return not(allowedContacts)
 
 
 
-    def create_visual_fn(cid):
+    def create_visual_fn(cid, collision_boxes=False):
+        vis_col = []
+
         for i in range(len(dims)):
             box_lower = [pos[i][j] - dims[i][j]/2 for j in range(3)]
             box_upper = [pos[i][j] + dims[i][j]/2 for j in range(3)]
@@ -771,45 +909,30 @@ def create_box_collisions(dims, pos, safety=1.2):
                                 physicsClientId=cid, 
                                 halfExtents = box_halfs, 
                                 )
-            test_body = p.createMultiBody(baseMass=0, baseVisualShapeIndex=box_vis, basePosition = box_centre, physicsClientId=cid)
+
+            box_col = p.createCollisionShape(p.GEOM_BOX, 
+                                physicsClientId=cid, 
+                                halfExtents = box_halfs, 
+                                )
+
+            test_body = p.createMultiBody(baseMass=1, baseVisualShapeIndex=box_vis, baseCollisionShapeIndex=box_col, basePosition = box_centre, physicsClientId=cid)
+
+            if collision_boxes:
+                box_halfs = [safety+abs(box_upper[i] - box_lower[i])/2 for i in range(3)]
+
+                colour[3] = 0.2
+
+                box_vis = p.createVisualShape(p.GEOM_BOX, 
+                                rgbaColor=colour, 
+                                physicsClientId=cid, 
+                                halfExtents = box_halfs, 
+                                )
+
+                test_body = p.createMultiBody(baseMass=1, baseVisualShapeIndex=box_vis, basePosition = box_centre, physicsClientId=cid)
+                vis_col.append(test_body)
+        return vis_col
 
     return collision_fn, create_visual_fn
-
-def get_dist_fn(tool_space=False):
-    from vs068_pb.ik_fk import getFK_FN
-    from vs068_pb.rrt import TreeNode
-
-    fk = getFK_FN()
-
-    if tool_space:
-        def fn(node_a, node_b=-1):
-            if isinstance(node_b, TreeNode):
-                #print("Node")
-                test_pose = node_b.pose
-            elif isinstance(node_b, int):
-                #print("int")
-                test_pose = desired_fk
-            elif isinstance(node_b, list):
-                #print("list")
-                test_pose = fk(node_b)
-            elif isinstance(node_b, np.ndarray):
-                #print("NP Array")
-                test_pose = fk(node_b)
-            else:
-                #print(type(node_b))
-                test_pose = fk(node_b)
-
-            distance = get_pose_distance(node_a.pose, test_pose)
-            return distance #2*distance[0] + distance[1]
-    else:
-        def fn(conf_a, conf_b):
-            if isinstance(conf_a, TreeNode):
-                conf_a = conf_a.config
-            if isinstance(conf_b, TreeNode):
-                conf_b = conf_b.config 
-            return get_distance(conf_a, conf_b)
-            #return max([abs(conf_a[q] - conf_b[q]) for q in range(len(conf_a))])
-    return fn
 
 def size_all():
     import sys
@@ -821,3 +944,8 @@ def size_all():
         size_total += eval('sys.getsizeof(' + key + ')')
 
     return size_total
+
+def flip_dict(dictionary):
+    reversed_dictionary = {value : key for (key, value) in dictionary.items()}
+
+    return reversed_dictionary
