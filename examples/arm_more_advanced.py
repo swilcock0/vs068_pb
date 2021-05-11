@@ -52,8 +52,9 @@ def Start():
     print("--------")
     for i in range(p.getNumJoints(botId)):
         print(p.getJointInfo(botId, i))
-#        print(str(p.getJointInfo(botId, i)[0]) + " : " + p.getJointInfo(botId, i)[1].decode('UTF-8') +
-#            "   (" + str(p.getJointInfo(botId, i)[8]) + " < x < " + str(p.getJointInfo(botId, i)[9]) + ")")
+        #print(p.getJointInfo(botId, i)[1].decode('UTF-8'), p.getJointInfo(botId, i)[11])
+#        print(str(p.getJointInfo(botId, i)[0]) + " : " + p.getJointInfo(botId, i)[1].decode('UT-8') +
+#            "   (" + str(p.getJointInfo(botId, i)[8]) + " < x < " + str(p.getJointInfo(botId, i#)[9]) + ")")
     
 
     # Start stepping the sim

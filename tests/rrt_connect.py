@@ -4,6 +4,9 @@ from pstats import SortKey
 from vs068_pb.utils import Disconnect, quick_load_bot, set_joint_states, Camera, loadFloor, interval_generator, create_box_collisions, Pose,\
     size_all
 from vs068_pb.path_viewer import view_path
+from vs068_pb.trajectory_viewer import view_trajectory
+from vs068_pb.path_to_traj import path_to_traj
+
 from vs068_pb.naive_smooth import shortcut, shortcut_relax
 import pybullet as p
 import vs068_pb.config as config
@@ -19,7 +22,7 @@ goals =  [(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)]
 
 generator = interval_generator(config.lower_lims, config.upper_lims, use_halton=True)
 print("Finding valid configurations")
-for i in range(9):
+for i in range(99):
     next_goal = next(generator)
 
     while (collision_fn(next_goal) == True):
@@ -67,4 +70,9 @@ print("Path : {} long, Goals : {} long".format(len(paths), len(goals)-1))
 print("Took {:.2f} s, {:%} success rate".format(time.time() - start_time, sum(success_list)/len(success_list)))
 
 
-view_path(paths, goals, success_list, visual_fn)
+# view_path(paths, goals, success_list, visual_fn)
+
+print("Converting paths to trajectories")
+trajectories = [path_to_traj(paths[i], t_dur=3) for i in range(len(paths))]
+view_trajectory(trajectories, goals, success_list, visual_fn)
+
