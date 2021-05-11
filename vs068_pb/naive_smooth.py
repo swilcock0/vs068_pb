@@ -6,7 +6,8 @@ from vs068_pb.utils import sample_line, uniform_generator, get_distance
 See https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6165411/ for smoothing rather than shortcutting based on NURBS 
 '''
 '''
-See https://click.endnote.com/viewer?doi=10.1007%2Fs10846-016-0437-x&token=WzI5NjU3MDEsIjEwLjEwMDcvczEwODQ2LTAxNi0wNDM3LXgiXQ.LHNOZA9P0qP_L8IMu7I21rf9eYQ
+See Adaptive Partial Shortcuts: Path Optimizationfor Industrial Robotics
+https://click.endnote.com/viewer?doi=10.1007%2Fs10846-016-0437-x&token=WzI5NjU3MDEsIjEwLjEwMDcvczEwODQ2LTAxNi0wNDM3LXgiXQ.LHNOZA9P0qP_L8IMu7I21rf9eYQ
 for categorisation of shortcutting techniques
 '''
 

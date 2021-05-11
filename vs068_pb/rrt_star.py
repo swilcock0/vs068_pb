@@ -177,7 +177,7 @@ def rrt_star(current_conf, desired_conf, collision_fn = lambda q: False, informe
         
 
         nearest, smallest = argmin(lambda n: dist_fun(n, new_conf), nodes_select)
-        path = safe_path(extend_fn(nearest.config, new_conf), collision_fn)
+        path = safe_path(extend_fn(nearest.config, new_conf, step=step), collision_fn)
 
         if len(path) == 0:
             continue
@@ -200,7 +200,7 @@ def rrt_star(current_conf, desired_conf, collision_fn = lambda q: False, informe
                 for n in neighbors:
                     d = dist_fun(n.config, new.config)
                     if (n.cost + d) < new.cost:
-                        path = safe_path(extend_fn(n.config, new.config), collision_fn)
+                        path = safe_path(extend_fn(n.config, new.config, step=step), collision_fn)
                         if (len(path) != 0) and (dist_fun(new.config, path[-1]) < EPSILON):
                             new.rewire(n, d, path[:-1], iteration=counter)
 
