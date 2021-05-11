@@ -141,7 +141,7 @@ def find_nearest(array, value):
     idx = (np.abs(array - value)).argmin()
     return idx
 
-def view_trajectory(trajectories, goals=None, success_list=None, visual_fn = lambda q: False, interpolate_gaps=True, loop=True):
+def view_trajectory(trajectories, goals=None, success_list=None, visual_fn = lambda q: False, interpolate_gaps=False, loop=True):
     # Disconnect the collision fn
     Disconnect()
 
