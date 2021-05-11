@@ -4,7 +4,7 @@ from pstats import SortKey
 from vs068_pb.utils import Disconnect, quick_load_bot, set_joint_states, Camera, loadFloor, interval_generator, create_box_collisions, Pose,\
     size_all
 from vs068_pb.path_viewer import view_path
-from vs068_pb.naive_smooth import smooth
+from vs068_pb.naive_smooth import shortcut, shortcut_relax
 import pybullet as p
 import vs068_pb.config as config
 import time
@@ -19,7 +19,7 @@ goals =  [(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)]
 
 generator = interval_generator(config.lower_lims, config.upper_lims, use_halton=True)
 print("Finding valid configurations")
-for i in range(99):
+for i in range(9):
     next_goal = next(generator)
 
     while (collision_fn(next_goal) == True):
@@ -46,8 +46,8 @@ start_time = time.time()
 for i in range(1, len(goals)):
     #print(goals[i-1], goals[i])
     time_done = time.time()
-    path_section, success = rrt_connect(path_section[-1], goals[i], n_it = 1000, time_limit = 3.0, tool_space=False, step=0.1, tolerance=tolerance, visualise=0, collision_fn=collision_fn)
-    path_section = smooth(path_section, collision_fn=collision_fn, time_limit=1.0-(time.time()-time_done))
+    path_section, success = rrt_connect(path_section[-1], goals[i], n_it = 1000, time_limit = 1.5, tool_space=False, step=0.1, tolerance=tolerance, visualise=0, collision_fn=collision_fn)
+    path_section = shortcut(path_section, collision_fn=collision_fn, time_limit=1.5-(time.time()-time_done))
     paths.append(path_section)
     success_list.append(success)
     print(i)

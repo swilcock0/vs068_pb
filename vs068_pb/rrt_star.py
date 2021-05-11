@@ -111,9 +111,9 @@ def rrt_star(current_conf, desired_conf, collision_fn = lambda q: False, informe
     # Check start/end states
     if collision_fn(current_conf) or collision_fn(desired_conf):
         if collision_fn(current_conf):
-            print("Start : {}".format(current_conf))
+            print("Start : {} in collision".format(current_conf))
         if collision_fn(desired_conf):
-            print("End : {}".format(desired_conf))
+            print("End : {} in collision".format(desired_conf))
         return [(0.0, 0.0, 0.0, 0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)], False
 
     start_time = time.time()
@@ -156,7 +156,8 @@ def rrt_star(current_conf, desired_conf, collision_fn = lambda q: False, informe
         # Don't go on for too long
         elapsed = time.time() - start_time
         if elapsed > time_limit:
-            print("RRT*: Timed out at {} seconds!".format(elapsed))
+            if config.PLANNING_VERBOSE:
+                print("RRT*: Timed out at {} seconds!".format(elapsed))
             break
 
         if bias:
@@ -177,7 +178,7 @@ def rrt_star(current_conf, desired_conf, collision_fn = lambda q: False, informe
         
 
         nearest, smallest = argmin(lambda n: dist_fun(n, new_conf), nodes_select)
-        path = safe_path(extend_fn(nearest.config, new_conf), collision_fn)
+        path = safe_path(extend_fn(nearest.config, new_conf, step=step), collision_fn)
 
         if len(path) == 0:
             continue
@@ -200,12 +201,13 @@ def rrt_star(current_conf, desired_conf, collision_fn = lambda q: False, informe
                 for n in neighbors:
                     d = dist_fun(n.config, new.config)
                     if (n.cost + d) < new.cost:
-                        path = safe_path(extend_fn(n.config, new.config), collision_fn)
+                        path = safe_path(extend_fn(n.config, new.config, step=step), collision_fn)
                         if (len(path) != 0) and (dist_fun(new.config, path[-1]) < EPSILON):
                             new.rewire(n, d, path[:-1], iteration=counter)
 
     if counter >= n_it-1:
-        print("RRT*: Maxed out iterations.")
+        if config.PLANNING_VERBOSE:
+            print("RRT*: Maxed out iterations.")
     
     if config.TEST_COLLISIONS:
         print("{} collisions, {} not collisions".format(collisions, not_collisions))
@@ -215,16 +217,20 @@ def rrt_star(current_conf, desired_conf, collision_fn = lambda q: False, informe
 
     if less_than_tol(tolerance, dist_fun(closest, desired_conf)):
         if elapsed > time_limit:
-            print("RRT*: Found a path to goal within tolerance!")
+            if config.PLANNING_VERBOSE:
+                print("RRT*: Found a path to goal within tolerance!")
         else:
-            print("RRT*: Found a path to goal within tolerance in {} sec!".format(elapsed))
+            if config.PLANNING_VERBOSE:
+                print("RRT*: Found a path to goal within tolerance in {} sec!".format(elapsed))
         found = True
     else:
-        print("RRT*: Not found a solution")
+        if config.PLANNING_VERBOSE:
+            print("RRT*: Not found a solution")
         found = False
 
-    print("Distance : {}".format(closest_dist))
-    print("Cost : {}".format(closest.cost))
+    if config.PLANNING_VERBOSE:
+        print("Distance : {}".format(closest_dist))
+        print("Cost : {}".format(closest.cost))
 
 
     if config.DEBUG:

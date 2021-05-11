@@ -127,7 +127,8 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
         # Don't go on for too long
         elapsed = time.time() - start_time
         if elapsed > time_limit:
-            print("RRT: Timed out at {} seconds!".format(elapsed))
+            if config.PLANNING_VERBOSE:
+                print("RRT: Timed out at {} seconds!".format(elapsed))
             break
 
         if bias:
@@ -163,7 +164,8 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
                     print("Closest : {}, step : {}, counter : {}".format(closest_dist, step, counter))
 
                 if less_than_tol(tolerance, dist_fun(last, desired_conf)):
-                    print("RRT: Found a path to goal within tolerance in {} sec!".format(elapsed))
+                    if config.PLANNING_VERBOSE:
+                        print("RRT: Found a path to goal within tolerance in {} sec!".format(elapsed))
                     #dist_fun(last, desired_conf)
                     found = True
                     break
@@ -172,7 +174,8 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
             break
     
     if counter >= n_it-1:
-        print("RRT: Maxed out iterations.")
+        if config.PLANNING_VERBOSE:
+            print("RRT: Maxed out iterations.")
 
     if config.TEST_COLLISIONS:
         print("{} collisions, {} not collisions".format(collisions, not_collisions))
