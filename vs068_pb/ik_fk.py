@@ -143,7 +143,7 @@ def get_valid_ik(pose, cid=0, botId=0, validate=True, validate_collisions=True, 
         print("POSE : {}".format(pose))
     solutions = sample_ik(cid, botId, pose, **kwargs)
     if validate:
-        solutions = prune_invalid_poses(solutions, cid, botId, get_one, **kwargs)
+        solutions = prune_invalid_poses(solutions, cid, botId, get_one, validate_collisions, **kwargs)
 
     return solutions
 

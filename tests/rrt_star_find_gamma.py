@@ -1,8 +1,8 @@
-from vs068_pb.rrt_star import rrt_star
+from vs068_pb.motion.rrt_star import rrt_star
 from pstats import SortKey
 from vs068_pb.utils import Disconnect, quick_load_bot, set_joint_states, Camera, loadFloor, interval_generator, create_box_collisions, Pose,\
     size_all, flip_dict
-from vs068_pb.path_viewer import view_path
+from vs068_pb.viewers import view_path
 import pybullet as p
 import vs068_pb.config as config
 import time

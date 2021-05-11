@@ -432,7 +432,7 @@ def get_length(vec, norm=2):
     return np.linalg.norm(vec, ord=norm)
 
 def get_difference(p1, p2):
-    from vs068_pb.rrt import TreeNode
+    from vs068_pb.motion.rrt import TreeNode
     assert len(p1) == len(p2)
     return np.array(p2) - np.array(p1)
 
@@ -686,7 +686,7 @@ def quick_load_bot(mode=p.DIRECT, physicsClient=-1, collisions = True, fullscree
                 physicsClient = p.connect(mode, options=gui_options)
                 #p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
             else:
-                physicsClient = p.connect(mode, options=gui_options)
+                physicsClient = p.connect(mode)
 
         p.resetDebugVisualizerCamera(cameraDistance=1.7, 
                                     cameraYaw=45.0, 
@@ -940,8 +940,11 @@ def create_box_collisions(dims, pos, safety=0.05):
             test_body = p.createMultiBody(baseMass=1, baseVisualShapeIndex=box_vis, baseCollisionShapeIndex=box_col, basePosition = box_centre, physicsClientId=cid)
 
             if collision_boxes:
+                box_lower = [pos[i][j] - dims[i][j]/2 for j in range(3)]
+                box_upper = [pos[i][j] + dims[i][j]/2 for j in range(3)]
                 box_halfs = [safety+abs(box_upper[i] - box_lower[i])/2 for i in range(3)]
-
+                #print(box_halfs)
+                box_centre = [box_lower[i] + box_halfs[i] for i in range(3)] 
                 colour[3] = 0.2
 
                 box_vis = p.createVisualShape(p.GEOM_BOX, 

@@ -1,10 +1,10 @@
-from vs068_pb.rrt import rrt, configs, TreeNode
-from vs068_pb.rrt_connect import rrt_connect
-from vs068_pb.rrt_star import rrt_star, OptimalNode
-from vs068_pb.rrt_star_connect import birrt_star
+from vs068_pb.motion.rrt import rrt, configs, TreeNode
+from vs068_pb.motion.rrt_connect import rrt_connect
+from vs068_pb.motion.rrt_star import rrt_star, OptimalNode
+from vs068_pb.motion.rrt_star_connect import birrt_star
 from vs068_pb.utils import randomize
-from vs068_pb.naive_smooth import shortcut, smooth
-from vs068_pb.path_to_traj import path_to_traj
+from vs068_pb.motion.naive_smooth import shortcut, smooth
+from vs068_pb.motion.path_to_traj import path_to_traj
 import vs068_pb.config as config
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
