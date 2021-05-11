@@ -9,6 +9,8 @@ from numpy import array, concatenate
 import sys
 import os
 import pybullet_data
+from scipy.interpolate import interp1d
+from scipy import interpolate
 # from PyQt5.QtWidgets import QApplication
 # from PyQt5.QtCore import QUrl
 # from PyQt5 import QtWebEngineWidgets
@@ -508,6 +510,21 @@ def sample_line(segment, step_size=2e-2):
     for l in np.arange(0., dist, step_size):
         yield tuple(np.array(q1) + l * diff / dist)
     yield q2
+
+def spline_uni(y):
+    x = list(range(len(y)))
+    tck = interpolate.splrep(x, y, s=2)
+
+    return interpolate.splev(x, tck, der=0)
+
+def smooth_spline(p):
+    print(p)
+    p = list(p)
+    q_out = []
+    for q in p:
+        q_out.append(spline_uni(q))
+    return q_out
+
 
 def get_delta(q1, q2):
     return np.array(q2) - np.array(q1)

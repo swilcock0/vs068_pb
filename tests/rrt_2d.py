@@ -3,7 +3,8 @@ from vs068_pb.rrt_connect import rrt_connect
 from vs068_pb.rrt_star import rrt_star, OptimalNode
 from vs068_pb.rrt_star_connect import birrt_star
 from vs068_pb.utils import randomize
-from vs068_pb.naive_smooth import shortcut
+from vs068_pb.naive_smooth import shortcut, smooth
+from vs068_pb.path_to_traj import path_to_traj
 import vs068_pb.config as config
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -113,6 +114,8 @@ for box in boxes:
 
 
 path = shortcut(path, collision_fn, step=step_size, time_limit=0.5)
+path = smooth(path)
+#print(path_to_traj(path))
 
 x = [p[0] for p in path]
 y = [p[1] for p in path]   

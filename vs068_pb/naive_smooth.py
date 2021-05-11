@@ -1,6 +1,6 @@
 import time
 import numpy as np
-from vs068_pb.utils import sample_line, uniform_generator, get_distance
+from vs068_pb.utils import sample_line, uniform_generator, get_distance, spline_uni, smooth_spline
 import vs068_pb.config as config
 '''
 See https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6165411/ for smoothing rather than shortcutting based on NURBS 
@@ -121,3 +121,15 @@ def shortcut_relax(path, collision_fn = lambda q: False, time_limit=np.Inf, step
     if config.PLANNING_VERBOSE:
         print("Path length {}, relaxed by {:.2%} with {} shortcuts made in {} s".format(total_new, (total-total_new)/total, shortcuts, round(time.time()-start_time, 2)))
     return path_current
+
+def smooth(path):
+    path_feed = list(path)
+    path_new = [[0 for q in path[0]] for p in path]
+    for q in range(len(path[0])):
+        points = [path[i][q] for i in range(len(path))]
+        points = spline_uni(points)
+
+        for i in range(len(points)):
+            path_new[i][q] = points[i]
+        
+    return path

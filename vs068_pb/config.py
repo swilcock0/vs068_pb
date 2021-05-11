@@ -58,6 +58,7 @@ CART_TOL = 0.005
 ANGL_TOL = radians(1)
 lower_lims = [-2.9671, -1.74533, -2.0944, -4.71239, -2.0944, -6.283]
 upper_lims=[2.9671, 2.35619, 2.6529, 4.71239, 2.0944, 6.283]
+vel_lims = [6.2134, 5.28835, 6.59734, 8.29031, 8.25541, 12.566]
 
 IKFastInfo = namedtuple('IKFastInfo', ['module_name', 'base_link', 'ee_link', 'free_joints'])
 info = IKFastInfo(module_name='vs068_ikfast', base_link=0, ee_link=8, free_joints=[2, 3, 4, 5, 6, 7])
