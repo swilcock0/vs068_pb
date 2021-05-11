@@ -1,5 +1,6 @@
 import cProfile, pstats, io
 from vs068_pb.rrt_star_connect import birrt_star
+from vs068_pb.naive_smooth import shortcut
 from pstats import SortKey
 from vs068_pb.utils import Disconnect, quick_load_bot, set_joint_states, Camera, loadFloor, interval_generator, create_box_collisions, Pose,\
     size_all

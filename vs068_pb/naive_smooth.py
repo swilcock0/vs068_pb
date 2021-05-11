@@ -1,7 +1,7 @@
 import time
 import numpy as np
 from vs068_pb.utils import sample_line, uniform_generator, get_distance
-
+import vs068_pb.config as config
 '''
 See https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6165411/ for smoothing rather than shortcutting based on NURBS 
 '''
@@ -59,7 +59,8 @@ def shortcut(path, collision_fn = lambda q: False, time_limit=0.5, step=0.1):
 
     steps = [get_distance(path_current[i], path_current[i+1]) for i in range(1, len(path_current)-1)]
     total_new = np.sum(steps)
-    print("Path length reduced by {:.2%} with {} shortcuts made".format((total-total_new)/total, shortcuts))
+    if config.PLANNING_VERBOSE:
+        print("Path length {}. reduced by {:.2%} with {} shortcuts made".format(total_new, (total-total_new)/total, shortcuts))
     return path_current
 
 
@@ -117,5 +118,6 @@ def shortcut_relax(path, collision_fn = lambda q: False, time_limit=np.Inf, step
 
     steps = [get_distance(path_current[i], path_current[i+1]) for i in range(1, len(path_current)-1)]
     total_new = np.sum(steps)
-    print("Path length relaxed by {:.2%} with {} shortcuts made in {} s".format((total-total_new)/total, shortcuts, round(time.time()-start_time, 2)))
+    if config.PLANNING_VERBOSE:
+        print("Path length {}, relaxed by {:.2%} with {} shortcuts made in {} s".format(total_new, (total-total_new)/total, shortcuts, round(time.time()-start_time, 2)))
     return path_current

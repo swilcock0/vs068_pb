@@ -73,7 +73,8 @@ def rrt_connect(current_conf, desired_conf, collision_fn = lambda q: False, tool
         # Don't go on for too long
         elapsed = time.time() - start_time
         if elapsed > time_limit:
-            print("RRTConnect: Timed out at {} seconds! Returning closest".format(elapsed))
+            if config.PLANNING_VERBOSE:
+                print("RRTConnect: Timed out at {} seconds! Returning closest".format(elapsed))
             break
         
         if len(nodes_list[0]) < len(nodes_list[1]):
@@ -128,7 +129,8 @@ def rrt_connect(current_conf, desired_conf, collision_fn = lambda q: False, tool
             nodes.append(last)
 
         closest = last
-        print("RRTConnect: Connecting graph found in {} sec!".format(time.time() - start_time))
+        if config.PLANNING_VERBOSE:
+            print("RRTConnect: Connecting graph found in {} sec!".format(time.time() - start_time))
     else:
         closest, closest_dist = argmin(lambda n: dist_fun(n, desired_conf), nodes_list[0])
 
