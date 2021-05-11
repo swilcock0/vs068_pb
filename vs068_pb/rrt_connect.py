@@ -39,7 +39,7 @@ def get_extend_fn(obstacles=[]):
 # SWAP(Ta, Tb);
 
 def rrt_connect(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=True, tolerance=0.01, return_tree=False, \
-    limits=[config.lower_lims, config.upper_lims], greedy_prob=0.2,\
+    limits=[config.lower_lims, config.upper_lims], greedy_prob=0.0,\
     time_limit = 5.0, step = 0.1, n_it = 100, visualise=0, **kwargs):
     config.DEBUG = False
     extend_fn, roadmap = get_extend_fn()

@@ -1,4 +1,5 @@
 import cProfile, pstats, io
+from vs068_pb.naive_smooth import shortcut
 from vs068_pb.rrt_star import rrt_star
 from pstats import SortKey
 from vs068_pb.utils import Disconnect, quick_load_bot, set_joint_states, Camera, loadFloor, interval_generator, create_box_collisions, Pose,\
@@ -44,12 +45,15 @@ start_time = time.time()
 pr = cProfile.Profile()
 pr.enable()
 for i in range(1, len(goals)):
-    path_section, success = rrt_star(path_section[-1], goals[i], n_it = 99999, time_limit = 2.0, tool_space=False, step=0.1, tolerance=tolerance, collision_fn=collision_fn)
+    s_time = time.time()
+    path_section, success = rrt_star(path_section[-1], goals[i], n_it = 99999, time_limit = 0.5, tool_space=False, step=0.1, tolerance=tolerance, collision_fn=collision_fn)
     if (len(path_section) < 3):
         print(path_section)
         config.TEST_COLLISIONS_VERBOSE = True
     else:
         config.TEST_COLLISIONS_VERBOSE = False
+        
+    path_section = shortcut(path_section, collision_fn=collision_fn, time_limit=1.5-(time.time()-s_time))
     paths.append(path_section)
     success_list.append(success)
     print(i)
