@@ -163,6 +163,7 @@ def Disconnect():
 
 def Step(steps = 10000, sleep = 1, cid=0, botId=0):
     ''' Step simulation steps times. If sleep == 0, no wait between steps '''
+    config.prev_pose = p.getLinkState(botId, config.EEF_ID)[0]
     controltype = 1
     config.buttonsave = p.readUserDebugParameter(config.params['button'], cid)
     camera_ctr = 0
@@ -185,10 +186,10 @@ def Step(steps = 10000, sleep = 1, cid=0, botId=0):
         else:
             MiscControl(botId, cid)
         
-        camera_ctr += 1
-        if camera_ctr == config.ENG_RATE/config.CAMERA_RATE:
-            Camera(cid, botId, 11)
-            camera_ctr = 0
+        # camera_ctr += 1
+        # if camera_ctr == config.ENG_RATE/config.CAMERA_RATE:
+        #     Camera(cid, botId, 11)
+        #     camera_ctr = 0
         
         config.SIM_T += config.T_STEP
         if config.PRINT_SIM_T:
@@ -200,7 +201,8 @@ def Step(steps = 10000, sleep = 1, cid=0, botId=0):
 
         for contact in (p.getContactPoints(physicsClientId=cid)):
             if not([contact[3], contact[4]] in config.NEVER_COLLIDE_NUMS and contact[1] == contact[2]):
-                print("Contact : {}".format(contact[:5]))
+                if config.TEST_COLLISIONS:
+                    print("Contact : {}".format(contact[:5]))
             
 
 
@@ -840,10 +842,9 @@ def create_box_collisions(dims, pos, safety=0.05):
     allowed = []
 
     for i in range(len(dims)):
-        box_lower = [pos[i][j] - dims[i][j]/2 for j in range(3)]
-        box_upper = [pos[i][j] + dims[i][j]/2 for j in range(3)]
-        box_halfs = [safety+abs(box_upper[i] - box_lower[i])/2 for i in range(3)]
-        #print(box_halfs)
+        box_lower = [pos[i][j] - dims[i][j]/2-safety for j in range(3)]
+        box_upper = [pos[i][j] + dims[i][j]/2+safety for j in range(3)]
+        box_halfs = [abs(box_upper[i] - box_lower[i])/2 for i in range(3)]
         box_centre = [box_lower[i] + box_halfs[i] for i in range(3)] 
 
         #print(box_lower, box_centre, box_upper, box_halfs)
@@ -940,10 +941,9 @@ def create_box_collisions(dims, pos, safety=0.05):
             test_body = p.createMultiBody(baseMass=1, baseVisualShapeIndex=box_vis, baseCollisionShapeIndex=box_col, basePosition = box_centre, physicsClientId=cid)
 
             if collision_boxes:
-                box_lower = [pos[i][j] - dims[i][j]/2 for j in range(3)]
-                box_upper = [pos[i][j] + dims[i][j]/2 for j in range(3)]
-                box_halfs = [safety+abs(box_upper[i] - box_lower[i])/2 for i in range(3)]
-                #print(box_halfs)
+                box_lower = [pos[i][j] - dims[i][j]/2-safety for j in range(3)]
+                box_upper = [pos[i][j] + dims[i][j]/2+safety for j in range(3)]
+                box_halfs = [abs(box_upper[i] - box_lower[i])/2 for i in range(3)]
                 box_centre = [box_lower[i] + box_halfs[i] for i in range(3)] 
                 colour[3] = 0.2
 

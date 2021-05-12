@@ -1,2 +1,13 @@
 vs068_pb/__pycache__/
+vs068_pb/motion/__pycache__/
 vs068_pb.egg-info/
+*.pyc
+**/*.pyc
+**/**/*.pyc
+**/**/**/*.pyc
+
+vs068_pb/motion/__pycache__/__init__.cpython-37.pyc
+**/__pycache__
+**/**/__pycache__
+**/**/**/__pycache__
+vs068_pb/motion/__pycache__/
