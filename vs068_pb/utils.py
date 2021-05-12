@@ -840,10 +840,9 @@ def create_box_collisions(dims, pos, safety=0.05):
     allowed = []
 
     for i in range(len(dims)):
-        box_lower = [pos[i][j] - dims[i][j]/2 for j in range(3)]
-        box_upper = [pos[i][j] + dims[i][j]/2 for j in range(3)]
-        box_halfs = [safety+abs(box_upper[i] - box_lower[i])/2 for i in range(3)]
-        #print(box_halfs)
+        box_lower = [pos[i][j] - dims[i][j]/2-safety for j in range(3)]
+        box_upper = [pos[i][j] + dims[i][j]/2+safety for j in range(3)]
+        box_halfs = [abs(box_upper[i] - box_lower[i])/2 for i in range(3)]
         box_centre = [box_lower[i] + box_halfs[i] for i in range(3)] 
 
         #print(box_lower, box_centre, box_upper, box_halfs)
@@ -940,10 +939,9 @@ def create_box_collisions(dims, pos, safety=0.05):
             test_body = p.createMultiBody(baseMass=1, baseVisualShapeIndex=box_vis, baseCollisionShapeIndex=box_col, basePosition = box_centre, physicsClientId=cid)
 
             if collision_boxes:
-                box_lower = [pos[i][j] - dims[i][j]/2 for j in range(3)]
-                box_upper = [pos[i][j] + dims[i][j]/2 for j in range(3)]
-                box_halfs = [safety+abs(box_upper[i] - box_lower[i])/2 for i in range(3)]
-                #print(box_halfs)
+                box_lower = [pos[i][j] - dims[i][j]/2-safety for j in range(3)]
+                box_upper = [pos[i][j] + dims[i][j]/2+safety for j in range(3)]
+                box_halfs = [abs(box_upper[i] - box_lower[i])/2 for i in range(3)]
                 box_centre = [box_lower[i] + box_halfs[i] for i in range(3)] 
                 colour[3] = 0.2
 
