@@ -19,7 +19,7 @@ goals =  [(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)]
 
 generator = interval_generator(config.lower_lims, config.upper_lims, use_halton=True)
 print("Finding valid configurations")
-for i in range(9):
+for i in range(4):
     next_goal = next(generator)
 
     while (collision_fn(next_goal) == True):

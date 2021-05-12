@@ -9,6 +9,9 @@
         "inputParameters": [
             {
                 "name": "on"
+            },
+            {
+                "name": "preview"
             }
         ],
         "outputParameters": [

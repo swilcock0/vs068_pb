@@ -17,7 +17,7 @@ collision_fn, visual_fn = create_box_collisions(dims, pos, safety=0.07)
 goals =  [(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)]
 
 generator = interval_generator(config.lower_lims, config.upper_lims, use_halton=True)
-for i in range(10):
+for i in range(4):
     next_goal = next(generator)
 
     while (collision_fn(next_goal) == True):

@@ -163,6 +163,7 @@ def Disconnect():
 
 def Step(steps = 10000, sleep = 1, cid=0, botId=0):
     ''' Step simulation steps times. If sleep == 0, no wait between steps '''
+    config.prev_pose = p.getLinkState(botId, config.EEF_ID)[0]
     controltype = 1
     config.buttonsave = p.readUserDebugParameter(config.params['button'], cid)
     camera_ctr = 0
@@ -185,10 +186,10 @@ def Step(steps = 10000, sleep = 1, cid=0, botId=0):
         else:
             MiscControl(botId, cid)
         
-        camera_ctr += 1
-        if camera_ctr == config.ENG_RATE/config.CAMERA_RATE:
-            Camera(cid, botId, 11)
-            camera_ctr = 0
+        # camera_ctr += 1
+        # if camera_ctr == config.ENG_RATE/config.CAMERA_RATE:
+        #     Camera(cid, botId, 11)
+        #     camera_ctr = 0
         
         config.SIM_T += config.T_STEP
         if config.PRINT_SIM_T:
@@ -200,7 +201,8 @@ def Step(steps = 10000, sleep = 1, cid=0, botId=0):
 
         for contact in (p.getContactPoints(physicsClientId=cid)):
             if not([contact[3], contact[4]] in config.NEVER_COLLIDE_NUMS and contact[1] == contact[2]):
-                print("Contact : {}".format(contact[:5]))
+                if config.TEST_COLLISIONS:
+                    print("Contact : {}".format(contact[:5]))
             
 
 
