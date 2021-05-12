@@ -40,8 +40,9 @@ def path_to_traj(path, max_vels=config.vel_lims, t_dur=5.0):
         last_time = trajectory[point_num]['t']
         last_config = path[point_num]
 
-    for point_num in range(len(trajectory)):
-        trajectory[point_num]['t'] = trajectory[point_num]['t']*t_dur/trajectory[len(trajectory)-1]['t']
-        #trajectory[point_num]['v'] = [(trajectory[point_num]['p'][i]-last_config[i])/trajectory[point_num]['t'] for i in range(len(max_vels))]
+    if trajectory[len(trajectory)-1]['t'] != 0 :
+        for point_num in range(len(trajectory)):
+            trajectory[point_num]['t'] = trajectory[point_num]['t']*t_dur/trajectory[len(trajectory)-1]['t']
+            #trajectory[point_num]['v'] = [(trajectory[point_num]['p'][i]-last_config[i])/trajectory[point_num]['t'] for i in range(len(max_vels))]
     #print(trajectory[point_num]['t'])
     return trajectory

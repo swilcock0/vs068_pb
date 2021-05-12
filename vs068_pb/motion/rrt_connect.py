@@ -2,7 +2,7 @@ import pybullet as p
 from vs068_pb.ik_fk import get_valid_ik, getFK_FN
 from vs068_pb.utils import quick_load_bot, save_state, restore_state, get_delta_pose_generator, argmin, get_distance, set_joint_states, \
     interval_generator, sample_line, get_difference, Disconnect, loadFloor, randomize, get_pose_distance, uniform_generator, less_than_tol
-from vs068_pb.rrt import TreeNode, configs, get_dist_fn
+from vs068_pb.motion.rrt import TreeNode, configs, get_dist_fn
 import vs068_pb.config as config
 from math import radians, degrees
 import time

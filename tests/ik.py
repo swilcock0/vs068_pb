@@ -30,7 +30,7 @@ append_if_non_empty(
 
 append_if_non_empty(
     solutions,
-    get_valid_ik(pose=Pose([0,0,0.9], [radians(180),radians(0),radians(0)]), cid=cid, botId=botId, validate=False, attempts=10000)
+    get_valid_ik(pose=Pose([0,0,0.9], [radians(180),radians(0),radians(0)]), cid=cid, botId=botId, validate=True, attempts=10000)
     )
 
 append_if_non_empty(
@@ -40,7 +40,7 @@ append_if_non_empty(
 
 append_if_non_empty(
     solutions,
-    get_valid_ik(pose=Pose([0.3,0.3,0.3], [radians(0), radians(0),radians(0)]), cid=cid, botId=botId, validate=True, attempts=10000, num_candidates=100)
+    get_valid_ik(pose=Pose([0.3,0.3,0.3], [radians(0), radians(180),radians(0)]), cid=cid, botId=botId, validate=False, attempts=10000, num_candidates=100)
     )
 
 

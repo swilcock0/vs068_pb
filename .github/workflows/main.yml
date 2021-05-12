@@ -1,0 +1,23 @@
+on: [push]
+
+jobs:
+  build_ghuser_components:
+    runs-on: windows-latest
+    name: Build components
+    steps:
+      - uses: actions/checkout@v2
+      - uses: NuGet/setup-nuget@v1.0.5
+      - name: Install IronPython
+        run: |
+          choco install ironpython --version=2.7.8.1
+      - uses: compas-dev/compas-actions.ghpython_components@v1
+        with:
+          source: components
+          target: build
+
+      - name: 'Upload Artifact'
+        uses: actions/upload-artifact@v2
+        with:
+          name: TestReach
+          path: build/TestReach.ghuser
+          retention-days: 5

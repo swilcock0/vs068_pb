@@ -1,0 +1,33 @@
+{
+    "name": "Load VS068 reachability data",
+    "nickname": "TestReach",
+    "description": "Loads reachmap data",
+    "category": "VS068",
+    "subcategory": "MAIN",
+
+    "ghpython": {
+        "inputParameters": [
+            {
+                "name": "on"
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "data"
+            },
+            {
+                "name": "X"
+            },
+            {
+                "name": "Y"
+            },
+            {
+                "name": "Z"
+            },
+            {
+                "name": "R"
+            }
+
+        ]
+    }
+}

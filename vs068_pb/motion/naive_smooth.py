@@ -29,6 +29,8 @@ def shortcut(path, collision_fn = lambda q: False, time_limit=0.5, step=0.1):
     #print(step_orig)
     shortcuts = 0
     start_time = time.time()
+    collisions=0
+    not_collisions = 0
     
     while time.time() - start_time <= time_limit:
         collide = False
@@ -51,8 +53,10 @@ def shortcut(path, collision_fn = lambda q: False, time_limit=0.5, step=0.1):
                 break
 
         if collide:
+            collisions +=1
             continue
         else:
+            not_collisions += 1
             # TODO : Check node_a/node_b not ends
             path_current = path_current[:node_a] + joining_path + path_current[node_b+1:]
             shortcuts += 1
@@ -61,6 +65,7 @@ def shortcut(path, collision_fn = lambda q: False, time_limit=0.5, step=0.1):
     total_new = np.sum(steps)
     if config.PLANNING_VERBOSE:
         print("Path length {}. reduced by {:.2%} with {} shortcuts made".format(total_new, (total-total_new)/total, shortcuts))
+        #print("Collisions/Not : {}/{}".format(collisions, not_collisions))
     return path_current
 
 
