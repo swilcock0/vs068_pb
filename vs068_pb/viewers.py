@@ -1,7 +1,7 @@
 import time
 import pybullet as p
 
-from vs068_pb.utils import set_joint_states, loadFloor, Disconnect, quick_load_bot, Camera
+from vs068_pb.utils import set_joint_states, loadFloor, Disconnect, quick_load_bot, Camera, DrawEEFLine
 import vs068_pb.config as config
 
 import math
@@ -203,6 +203,9 @@ def view_trajectory(trajectories, goals=None, success_list=None, visual_fn = lam
                 
                 if current_t_id != last_t_id:
                     set_joint_states(cid, botId, config.info.free_joints, point_current, [0]*6)
+                    current_pose = p.getLinkState(botId, config.EEF_ID)[0]
+                    p.addUserDebugLine(lineFromXYZ=config.prev_pose, lineToXYZ=current_pose, physicsClientId=cid, lifeTime=config.LINE_LIFE, lineColorRGB=[1,0,0], lineWidth=2)
+                    config.prev_pose = current_pose
                 time.sleep(0.1)
                 last_t_id = current_t_id
 
