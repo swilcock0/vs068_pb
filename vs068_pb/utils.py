@@ -163,12 +163,12 @@ def Disconnect():
 
 def Step(steps = 10000, sleep = 1, cid=0, botId=0):
     ''' Step simulation steps times. If sleep == 0, no wait between steps '''
-    config.prev_pose = p.getLinkState(botId, config.EEF_ID)[0]
     controltype = 1
     config.buttonsave = p.readUserDebugParameter(config.params['button'], cid)
     camera_ctr = 0
             
     for i in range(0, steps):
+        config.prev_pose = p.getLinkState(botId, config.EEF_ID)[0]
         p.stepSimulation(cid)
         
         if sleep == 1:

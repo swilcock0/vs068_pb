@@ -1,7 +1,7 @@
 {
-    "name": "Load VS068 reachability data",
+    "name": "Load reachmap",
     "nickname": "TestReach",
-    "description": "Loads reachmap data",
+    "description": "Loads VS068 reachability data",
     "category": "VS068",
     "subcategory": "MAIN",
 

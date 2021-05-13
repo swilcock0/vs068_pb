@@ -13,11 +13,10 @@ jobs:
       - uses: compas-dev/compas-actions.ghpython_components@v1
         with:
           source: components
-          target: build
+          target: vs068_components
 
       - name: 'Upload Artifact'
         uses: actions/upload-artifact@v2
         with:
           name: TestReach
-          path: build/TestReach.ghuser
-          retention-days: 5
+          path: vs068_components
