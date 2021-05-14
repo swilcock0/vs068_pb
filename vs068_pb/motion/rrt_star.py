@@ -117,8 +117,9 @@ def rrt_star(current_conf, desired_conf, collision_fn = lambda q: False, informe
         return [(0.0, 0.0, 0.0, 0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)], False
 
     start_time = time.time()
-    fk = getFK_FN()
-    desired_fk = fk(desired_conf)
+    if tool_space:
+        fk = getFK_FN()
+        desired_fk = fk(desired_conf)
     nodes = [OptimalNode(current_conf)]
     np.random.seed(int(time.time()))
     closest_dist = 999

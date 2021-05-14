@@ -37,6 +37,7 @@ def view_path(paths, goals=None, success_list=None, visual_fn = lambda q: False,
     xKey = ord('x')
     cKey = ord('c')
     mKey = ord('m')
+    pKey = ord('p')
     upKey = p.B3G_UP_ARROW
     downKey = p.B3G_DOWN_ARROW
     spaceKey = p.B3G_SPACE
@@ -92,6 +93,9 @@ def view_path(paths, goals=None, success_list=None, visual_fn = lambda q: False,
                 elif downKey in events:
                     time_anim += 1
                     #print(time_anim)
+                elif pKey in events:
+                    print("Plotting graph")
+                    graph_path(path)
                 elif spaceKey in events and time.time() - space_time > 0.5: #Prevent bounce
                     space_time = time.time()
                     tmp = time_anim_bak
@@ -209,4 +213,36 @@ def view_trajectory(trajectories, goals=None, success_list=None, visual_fn = lam
                 time.sleep(0.1)
                 last_t_id = current_t_id
 
+
+                events = p.getKeyboardEvents(cid)
+                if ord('p') in events:
+                    print("Plotting graph")
+                    graph_trajectory(trajectory)
+
     Disconnect()
+
+def graph_path(path):
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots()
+
+    for joint in np.transpose(path):
+        t = list(range(len(joint)))
+        ax.plot(t, joint)
+
+    plt.show()
+
+def graph_trajectory(trajectory):
+    path = []
+    timings = []
+
+    for k in trajectory.keys():
+        path.append(trajectory[k]['p'])
+        timings.append(trajectory[k]['t'])
+
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots()
+
+    for joint in np.transpose(path):
+        ax.plot(timings, joint)
+
+    plt.show()

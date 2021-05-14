@@ -56,7 +56,7 @@ print("Path : {} long, Goals : {} long".format(len(paths), len(goals)-1))
 print("Took {:.2f} s, {:%} success rate".format(time.time() - start_time, sum(success_list)/len(success_list)))
 
 
-# view_path(paths, goals, success_list, visual_fn)
+#view_path(paths, goals, success_list, visual_fn)
 
 print("Converting paths to trajectories")
 trajectories = [path_to_traj(paths[i], t_dur=3) for i in range(len(paths))]
