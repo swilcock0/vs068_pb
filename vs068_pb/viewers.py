@@ -187,7 +187,7 @@ def view_trajectory(trajectories, goals=None, success_list=None, visual_fn = lam
             start_time = time.time()
             current_t = 0.0
             last_t_id = 0
-            random_brick_gen(cid)
+            #random_brick_gen(cid)
 
             while current_t < times[-1]:
                 current_t = time.time() - start_time

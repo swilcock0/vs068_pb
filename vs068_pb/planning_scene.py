@@ -1,5 +1,5 @@
 import vs068_pb.config as config
-from vs068_pb.utils import set_joint_states
+from vs068_pb.utils import set_joint_states, Disconnect
 import pybullet as p
 import random
 
@@ -11,6 +11,25 @@ class Scene(object):
         self.allowed = []
         self.physicsClientId = physicsClientId
         self.botId = botId
+        if self.physicsClientId == -1:
+            self.initialise_collision_fn()
+
+    def initialise_collision_fn(self):
+        from vs068_pb.utils import quick_load_bot
+        Disconnect()
+        self.botId, self.physicsClientId = quick_load_bot()
+       
+        for g in self.collision_objects:
+            self.collision_objects[g].change_physics_client(self.physicsClientId)
+
+
+        self.initialise_allowed()
+        return self.check_collisions
+
+
+    def visual_fn(self, cid, **kwargs):
+        self.change_physics_clients(cid)
+        return [self.collision_objects[g].id_collision for g in self.collision_objects]
 
     def change_physics_clients(self, physicsClientId):
         self.physicsClientId = physicsClientId
@@ -91,7 +110,7 @@ class Geometry(object):
         self.id_visual = -1
         self.physicsClientId = physicsClientId
         self.safety_margin = safety_margin
-        self.mass = 1
+        self.mass = 0
         if colour == -1:
             self.rgbaColor = [random.random(), random.random(), random.random(), 1.0]
         else:

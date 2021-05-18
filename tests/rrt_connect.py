@@ -3,7 +3,7 @@ from vs068_pb.utils import Disconnect, quick_load_bot, set_joint_states, Camera,
 from vs068_pb.viewers import view_path
 from vs068_pb.viewers import view_trajectory
 from vs068_pb.motion.path_to_traj import path_to_traj
-
+from vs068_pb.planning_scene import Scene, Geometry
 from vs068_pb.motion.naive_smooth import shortcut, shortcut_relax
 import pybullet as p
 import vs068_pb.config as config
@@ -11,10 +11,25 @@ import time
 import math
 import sys
 
+## Set up planning scene
+MyScene = Scene()
+
+# Boxes
 dims = [[0.2, 0.2, 0.2], [0.1, 0.1, 1.2], [0.1, 0.1, 1.2]]
 pos = [[0.3,0.3,0.7], [-0.3, -0.3, 0.6], [-0.35, 0.35, 0.6]]
-collision_fn, visual_fn = create_box_collisions(dims, pos, safety=0.07)
 
+for i in range(len(dims)):
+    box = Geometry(physicsClientId=MyScene.physicsClientId)
+
+    box.define_box([pos[i], [0,0,0,1]], dims[i])
+
+    MyScene.add_object(box)
+
+collision_fn = MyScene.initialise_collision_fn()
+visual_fn = MyScene.visual_fn
+
+
+## Define some goals to test to
 goals =  [(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)]
 
 generator = interval_generator(config.lower_lims, config.upper_lims, use_halton=True)
@@ -56,7 +71,7 @@ print("Path : {} long, Goals : {} long".format(len(paths), len(goals)-1))
 print("Took {:.2f} s, {:%} success rate".format(time.time() - start_time, sum(success_list)/len(success_list)))
 
 
-#view_path(paths, goals, success_list, visual_fn)
+view_path(paths, goals, success_list, visual_fn)
 
 print("Converting paths to trajectories")
 trajectories = [path_to_traj(paths[i], t_dur=3) for i in range(len(paths))]
