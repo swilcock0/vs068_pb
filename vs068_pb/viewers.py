@@ -1,7 +1,7 @@
 import time
 import pybullet as p
 
-from vs068_pb.utils import set_joint_states, loadFloor, Disconnect, quick_load_bot, Camera, DrawEEFLine
+from vs068_pb.utils import set_joint_states, loadFloor, Disconnect, quick_load_bot, Camera, DrawEEFLine, random_brick_gen
 import vs068_pb.config as config
 
 import math
@@ -149,7 +149,6 @@ def view_trajectory(trajectories, goals=None, success_list=None, visual_fn = lam
     # Disconnect the collision fn
     Disconnect()
 
-
     if goals:
         # Create the coloured goal bot
         goalBot, cid = quick_load_bot(p.GUI, collisions=False)
@@ -188,6 +187,7 @@ def view_trajectory(trajectories, goals=None, success_list=None, visual_fn = lam
             start_time = time.time()
             current_t = 0.0
             last_t_id = 0
+            random_brick_gen(cid)
 
             while current_t < times[-1]:
                 current_t = time.time() - start_time
@@ -210,6 +210,7 @@ def view_trajectory(trajectories, goals=None, success_list=None, visual_fn = lam
                     current_pose = p.getLinkState(botId, config.EEF_ID)[0]
                     p.addUserDebugLine(lineFromXYZ=config.prev_pose, lineToXYZ=current_pose, physicsClientId=cid, lifeTime=config.LINE_LIFE, lineColorRGB=[1,0,0], lineWidth=2)
                     config.prev_pose = current_pose
+
                 time.sleep(0.1)
                 last_t_id = current_t_id
 
@@ -232,6 +233,7 @@ def graph_path(path):
     plt.show()
 
 def graph_trajectory(trajectory):
+    #p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
     path = []
     timings = []
 
@@ -240,9 +242,17 @@ def graph_trajectory(trajectory):
         timings.append(trajectory[k]['t'])
 
     import matplotlib.pyplot as plt
+    from numpy.polynomial import polynomial as poly
     fig, ax = plt.subplots()
 
-    for joint in np.transpose(path):
-        ax.plot(timings, joint)
+    for count, joint in enumerate(np.transpose(path)):
+        line_normal, = ax.plot(timings, joint, '-x')
+        line_normal.set_label(config.LINK_ID_LIST[count+2])
+        fitted_poly = poly.polyfit(timings, joint, deg=3)
+        fitted_vals = poly.polyval(timings, fitted_poly)
+        line_fitted, = ax.plot(timings, fitted_vals, 'o', color=plt.gca().lines[-1].get_color())
+        line_fitted.set_label(config.LINK_ID_LIST[count+2] + "_cubic")
 
+    ax.legend()
     plt.show()
+    #p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)

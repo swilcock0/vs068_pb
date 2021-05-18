@@ -705,6 +705,30 @@ def quick_load_bot(mode=p.DIRECT, physicsClient=-1, collisions = True, fullscree
 
         return botId, physicsClient
 
+
+def add_brick(cid, pose):
+    pos = pose[0]
+    orn = pose[1]
+    # TODO : Add orientation to createMultiBody
+    brick_coll = p.createCollisionShape(p.GEOM_MESH, 
+                            physicsClientId=cid, 
+                            fileName=os.path.join(config.src_fldr, "meshes", "BrickVisual.stl"),
+                            meshScale=[1/1000,1/1000,1/1000] 
+                            )
+
+    brick_vis = p.createVisualShape(p.GEOM_MESH, 
+                            physicsClientId=cid, 
+                            fileName=os.path.join(config.src_fldr, "meshes", "BrickVisual.stl"),
+                            meshScale=[1/1000,1/1000,1/1000],
+                            rgbaColor=[0.8, 0.25, 0.33, 1.0] 
+                            )
+
+    test_body = p.createMultiBody(baseMass=1, baseCollisionShapeIndex=brick_coll,  baseVisualShapeIndex=brick_vis, basePosition = pos, baseOrientation = orn, physicsClientId=cid)
+
+def random_brick_gen(cid):
+    brick_gen = get_delta_pose_generator(epsilon=1.0, angle=2*np.pi)
+    add_brick(cid, next(brick_gen))
+
 def irange(start, stop=None, step=1):  # np.arange
     if stop is None:
         stop = start
@@ -726,10 +750,12 @@ def argmin(function, sequence):
 
 botId, cid = quick_load_bot()
 config.LINK_IDS = {}
+config.LINK_ID_LIST = []
 for i in range(p.getNumJoints(botId)):
         jointInfo = (p.getJointInfo(botId, i))
 
         config.LINK_IDS[jointInfo[1].decode("UTF-8")] = jointInfo[0]
+        config.LINK_ID_LIST.append(jointInfo[1].decode("UTF-8"))
 p.disconnect(cid)
 
 
