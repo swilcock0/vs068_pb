@@ -18,6 +18,5 @@ jobs:
       - name: 'Upload Artifact'
         uses: actions/upload-artifact@v2
         with:
-          name: TestReach
-          path: build/TestReach.ghuser
-          retention-days: 5
+          name: vs068_components
+          path: build

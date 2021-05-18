@@ -84,7 +84,7 @@ def get_extend_fn(obstacles=[]):
 #         Return G
 # Return G
 
-def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=True, tolerance=0.01, limits=[config.lower_lims, config.upper_lims], time_limit = 1.0, step = 0.01, n_it = 100, \
+def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=False, tolerance=0.01, limits=[config.lower_lims, config.upper_lims], time_limit = 1.0, step = 0.01, n_it = 100, \
         visualise=0, greedy_prob = 0.2, return_tree=False, **kwargs):
     config.DEBUG = False
     extend_fn, roadmap = get_extend_fn()
@@ -98,8 +98,9 @@ def rrt(current_conf, desired_conf, collision_fn = lambda q: False, tool_space=T
         return [(0.0, 0.0, 0.0, 0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)], False
 
     start_time = time.time()
-    fk = getFK_FN()
-    desired_fk = fk(desired_conf)
+    if tool_space:
+        fk = getFK_FN()
+        desired_fk = fk(desired_conf)
     nodes = [TreeNode(current_conf)]
     np.random.seed(int(time.time()))
     closest_dist = 999

@@ -1,0 +1,15 @@
+{
+    "name": "Clear pose data",
+    "nickname": "ClearPose",
+    "description": "Clear stickied definition pose data",
+    "category": "VS068",
+    "subcategory": "MAIN",
+
+    "ghpython": {
+        "inputParameters": [
+            {
+                "name": "on"
+            }
+        ]
+    }
+}

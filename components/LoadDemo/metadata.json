@@ -1,0 +1,20 @@
+{
+    "name": "Load VS068 demo",
+    "nickname": "LoadDemo",
+    "description": "Loads the arm demo example. On exit, returns the final position of the EEF.",
+    "category": "VS068",
+    "subcategory": "MAIN",
+
+    "ghpython": {
+        "inputParameters": [
+            {
+                "name": "on"
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "pose"
+            }
+        ]
+    }
+}
