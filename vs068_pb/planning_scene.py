@@ -1,10 +1,11 @@
 import vs068_pb.config as config
-from vs068_pb.utils import set_joint_states, Disconnect
+from vs068_pb.utils import set_joint_states, Disconnect, loadFloor
 import pybullet as p
+import pybullet_data
 import random
 
 class Scene(object):
-    def __init__(self, physicsClientId=-1, botId=-1):
+    def __init__(self, physicsClientId=-1, botId=-1, quiet=False):
         self.collision_objects = {}
         self.object_counter = 1
         self.object_counter_max = 1
@@ -13,11 +14,26 @@ class Scene(object):
         self.botId = botId
         if self.physicsClientId == -1:
             self.initialise_collision_fn()
+        self.floor_id = -1
+        self.quiet = quiet
+
+    def match_all_poses(self):
+        p.changeDynamics(self.floor_id, -1, restitution=0.99, physicsClientId=self.physicsClientId)
+
+        for cobject in self.collision_objects:
+            self.collision_objects[cobject].make_bouncy(0.6)
+            self.collision_objects[cobject].match_poses()
+
+    def add_floor(self):
+        p.setAdditionalSearchPath(pybullet_data.getDataPath())
+        planeId = p.loadURDF("plane.urdf", physicsClientId=self.physicsClientId)
+
+        self.floor_id = planeId
 
     def initialise_collision_fn(self):
         from vs068_pb.utils import quick_load_bot
         Disconnect()
-        self.botId, self.physicsClientId = quick_load_bot()
+        self.botId, self.physicsClientId = quick_load_bot(quiet=self.quiet)
        
         for g in self.collision_objects:
             self.collision_objects[g].change_physics_client(self.physicsClientId)
@@ -103,14 +119,14 @@ class Scene(object):
         return not(allowedContacts)
 
 class Geometry(object):
-    def __init__(self, safety_margin=0.05, colour=-1, physicsClientId=0):
+    def __init__(self, safety_margin=0.05, colour=-1, physicsClientId=0, mass=0):
         self.pose = [[0,0,0], [0,0,0,1]]
         self.geometry_type = -1
         self.id_collision = -1
         self.id_visual = -1
         self.physicsClientId = physicsClientId
         self.safety_margin = safety_margin
-        self.mass = 0
+        self.mass = mass
         if colour == -1:
             self.rgbaColor = [random.random(), random.random(), random.random(), 1.0]
         else:
@@ -127,6 +143,8 @@ class Geometry(object):
         }
         self.repr_additional_info = None
 
+    def make_bouncy(self, level=0.99):
+        p.changeDynamics(self.id_collision, -1, restitution=level, physicsClientId=self.physicsClientId)
 
     def __repr__(self):
         if self.geometry_type == -1:
@@ -134,6 +152,9 @@ class Geometry(object):
         else:
             return "Geometry(Type: " + self.type_dict[self.geometry_type] + ", Pose: " + str(self.pose) + ")"
 
+    def match_poses(self):
+        pos,orn = p.getBasePositionAndOrientation(self.id_collision, self.physicsClientId)
+        p.resetBasePositionAndOrientation(self.id_visual, pos, orn, self.physicsClientId)
 
     def change_physics_client(self, physicsClientId):
         self.physicsClientId = physicsClientId

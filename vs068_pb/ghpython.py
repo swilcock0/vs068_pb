@@ -82,11 +82,15 @@ def load_demo():
 def is_connected():
     return p.isConnected() == 1
 
-def load_scene():
+def load_scene(load_floor=False, quiet=False):
     Disconnect()
-    botId, cid = quick_load_bot(p.GUI, quiet=False)
+    botId, cid = quick_load_bot(p.GUI, quiet=quiet)
 
-    scene = Scene(cid, botId)
+    scene = Scene(cid, botId, quiet=quiet)
+
+    if load_floor:
+        scene.add_floor()
+
     config.SCENE_STORAGE = scene
 
     return botId, cid
@@ -106,7 +110,7 @@ def load_mesh(file_id, pos=[1,0,0]):
     scene = config.SCENE_STORAGE
     
     if scene:
-        mesh_geo = Geometry(physicsClientId=scene.physicsClientId)
+        mesh_geo = Geometry(physicsClientId=scene.physicsClientId, mass=100.0)
         mesh_geo.define_mesh(file_id, pose_centre=[pos, [0,0,0,1]], scale=1)
         scene.add_object(mesh_geo)
         scene.initialise_allowed()
@@ -134,7 +138,9 @@ def set_realtime():
     p.setRealTimeSimulation(1, config.SCENE_STORAGE.physicsClientId)
 
 def step(n_it=1000):
+    p.setGravity(0.0, 0.0, -9.81, config.SCENE_STORAGE.physicsClientId)
     import time
     for n in range(n_it):
         p.stepSimulation(config.SCENE_STORAGE.physicsClientId)
+        config.SCENE_STORAGE.match_all_poses()
         time.sleep(1./240.)
