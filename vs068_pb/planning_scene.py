@@ -17,11 +17,15 @@ class Scene(object):
         self.floor_id = -1
         self.quiet = quiet
 
-    def match_all_poses(self):
+    def step(self):
+        p.stepSimulation(physicsClientId=self.physicsClientId)
         p.changeDynamics(self.floor_id, -1, restitution=0.99, physicsClientId=self.physicsClientId)
-
         for cobject in self.collision_objects:
             self.collision_objects[cobject].make_bouncy(0.6)
+        self.match_all_poses()
+
+    def match_all_poses(self):
+        for cobject in self.collision_objects:
             self.collision_objects[cobject].match_poses()
 
     def add_floor(self):
@@ -155,6 +159,7 @@ class Geometry(object):
     def match_poses(self):
         pos,orn = p.getBasePositionAndOrientation(self.id_collision, self.physicsClientId)
         p.resetBasePositionAndOrientation(self.id_visual, pos, orn, self.physicsClientId)
+        self.pose = [list(pos), list(orn)]
 
     def change_physics_client(self, physicsClientId):
         self.physicsClientId = physicsClientId
@@ -185,7 +190,7 @@ class Geometry(object):
         colour[3] = 1.0
         p.changeVisualShape(self.id_visual, -1, rgbaColor=colour)
 
-    def define_mesh(self, filename, pose_centre=[[0,0,0], [0,0,0,1]], scale=1):
+    def define_mesh(self, filename, pose_centre=[[0,0,0], [0,0,0,1]], scale=1, concavity=False):
         self.geometry_type = p.GEOM_MESH
         self.pose = pose_centre
 
@@ -203,11 +208,19 @@ class Geometry(object):
             colour = self.rgbaColor
             colour[3] = 0.3
 
-            mesh_col = p.createCollisionShape(p.GEOM_MESH, 
-                            physicsClientId=self.physicsClientId, 
-                            fileName = file_id, 
-                            meshScale=safetyScale
-                            )
+            if concavity:
+                mesh_col = p.createCollisionShape(p.GEOM_MESH, 
+                                physicsClientId=self.physicsClientId, 
+                                fileName = file_id, 
+                                meshScale=safetyScale,
+                                flags=p.GEOM_FORCE_CONCAVE_TRIMESH
+                                )
+            else:
+                mesh_col = p.createCollisionShape(p.GEOM_MESH, 
+                                physicsClientId=self.physicsClientId, 
+                                fileName = file_id, 
+                                meshScale=safetyScale,
+                                )
 
             mesh_coll_vis = p.createVisualShape(p.GEOM_MESH, 
                             physicsClientId=self.physicsClientId, 

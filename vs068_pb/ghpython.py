@@ -1,4 +1,4 @@
-from vs068_pb.utils import quick_load_bot
+from vs068_pb.utils import quick_load_bot, set_joint_states
 import numpy as np
 import pybullet as p
 import vs068_pb.config as config
@@ -103,7 +103,7 @@ def clean_temp():
     config.tmp.cleanup()
     #config.tmp.close()
 
-def load_mesh(file_id, pos=[1,0,0]):
+def load_mesh(file_id, pos=[1,0,0], concavity=False):
     import time
     import os    
 
@@ -111,9 +111,9 @@ def load_mesh(file_id, pos=[1,0,0]):
     
     if scene:
         mesh_geo = Geometry(physicsClientId=scene.physicsClientId, mass=100.0)
-        mesh_geo.define_mesh(file_id, pose_centre=[pos, [0,0,0,1]], scale=1)
+        mesh_geo.define_mesh(file_id, pose_centre=[pos, [0,0,0,1]], scale=1, concavity=concavity)
         scene.add_object(mesh_geo)
-        scene.initialise_allowed()
+        #scene.initialise_allowed()
 
 def clear_scene():
     if config.SCENE_STORAGE:
@@ -141,6 +141,21 @@ def step(n_it=1000):
     p.setGravity(0.0, 0.0, -9.81, config.SCENE_STORAGE.physicsClientId)
     import time
     for n in range(n_it):
-        p.stepSimulation(config.SCENE_STORAGE.physicsClientId)
-        config.SCENE_STORAGE.match_all_poses()
-        time.sleep(1./240.)
+        if is_connected():
+            config.SCENE_STORAGE.step()
+            config.SCENE_STORAGE.match_all_poses()
+            time.sleep(1./240.)
+    return [q[0] for q in p.getJointStates(config.SCENE_STORAGE.botId, config.FINGER_JOINTS, config.SCENE_STORAGE.physicsClientId)]
+
+def get_joint_positions():
+    if config.SCENE_STORAGE:
+        scene = config.SCENE_STORAGE
+        return [q[0] for q in p.getJointStates(config.SCENE_STORAGE.botId, config.info.free_joints + config.FINGER_JOINTS, config.SCENE_STORAGE.physicsClientId)]
+    else:
+        return []
+
+def set_joint_positions(q_vals):
+    if config.SCENE_STORAGE:
+        scene = config.SCENE_STORAGE
+
+        set_joint_states(scene.physicsClientId, scene.botId, config.info.free_joints + config.FINGER_JOINTS, q_vals, [0]*len(q_vals))
