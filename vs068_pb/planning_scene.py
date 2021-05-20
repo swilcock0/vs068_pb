@@ -55,7 +55,7 @@ class Scene(object):
 
     def clear_all(self):
         for g in self.collision_objects:
-            g.clear()
+            self.collision_objects[g].clear()
 
         self.collision_objects = {}
         self.object_counter = 1

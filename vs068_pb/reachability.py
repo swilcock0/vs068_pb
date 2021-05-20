@@ -8,14 +8,13 @@ from mpl_toolkits import mplot3d
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as io
 from math import radians
 from stl import mesh
 
 from vs068_pb.ik_fk import get_valid_ik
-from vs068_pb.utils import quick_load_bot, Disconnect, get_link_pose, Pose, set_joint_positions#, PlotlyViewer
+from vs068_pb.utils import quick_load_bot, Disconnect, get_link_pose, Pose, set_joint_positions, HideOutput#, PlotlyViewer
 import vs068_pb.config as config
 
 
@@ -313,68 +312,75 @@ class Reachability(object):
             fig.show(renderer="browser")#pv = PlotlyViewer(fig)
 
             if pybullet_view:
-                every_n = 1
-                botId, cid = quick_load_bot(p.GUI)
+                try:
+                    print("Building pybullet viewer (may take some time)")
+                    with HideOutput():
+                        every_n = 1
+                        botId, cid = quick_load_bot(p.GUI)
 
-                spheres = []
-                sphere_positions = []
-                sphere_colours = []
-                indices = []
-                max_body = 10 # Necessary due to limits on number of elements in body
+                        spheres = []
+                        sphere_positions = []
+                        sphere_colours = []
+                        indices = []
+                        max_body = 10 # Necessary due to limits on number of elements in body
 
-                for i in range(int(len(df['X'])/(every_n*max_body))):
-                    spheres = []
-                    sphere_positions = []
-                    sphere_colours = []
+                        for i in range(int(len(df['X'])/(every_n*max_body))):
+                            spheres = []
+                            sphere_positions = []
+                            sphere_colours = []
 
-                    for num in range(i*max_body, (i+1)*max_body, every_n):
-                        c = df['Reachability'][num]
-                        if c <=0.5 and c >= 0.0:
-                            c_mod = c/0.5
-                            colour = [1, c_mod, 0, 0.3]
-                        else:
-                            c_mod = (c-0.5)/0.5
-                            colour = [1-c_mod, 1, 0, 0.3]
+                            for num in range(i*max_body, (i+1)*max_body, every_n):
+                                c = df['Reachability'][num]
+                                if c <=0.5 and c >= 0.0:
+                                    c_mod = c/0.5
+                                    colour = [1, c_mod, 0, 0.3]
+                                else:
+                                    c_mod = (c-0.5)/0.5
+                                    colour = [1-c_mod, 1, 0, 0.3]
 
-                        #print(colour)
-                        visual_sphere = p.createVisualShape(
-                            shapeType=p.GEOM_SPHERE,
-                            rgbaColor=colour
-                        )
+                                #print(colour)
+                                visual_sphere = p.createVisualShape(
+                                    shapeType=p.GEOM_SPHERE,
+                                    rgbaColor=colour
+                                )
 
-                        spheres.append(visual_sphere)
-                        sphere_positions.append([df['X'][num]-df['X'][i*max_body], df['Y'][num]-df['Y'][i*max_body], df['Z'][num]-df['Z'][i*max_body]])
-                        sphere_colours.append(colour)
+                                spheres.append(visual_sphere)
+                                sphere_positions.append([df['X'][num]-df['X'][i*max_body], df['Y'][num]-df['Y'][i*max_body], df['Z'][num]-df['Z'][i*max_body]])
+                                sphere_colours.append(colour)
 
-                    assert(len(sphere_colours) == len(sphere_positions) == len(spheres))
+                            assert(len(sphere_colours) == len(sphere_positions) == len(spheres))
 
-                    shapeTypes=[p.GEOM_SPHERE for i in spheres]
-                    radii=[0.02 for i in spheres]
+                            shapeTypes=[p.GEOM_SPHERE for i in spheres]
+                            radii=[0.02 for i in spheres]
 
-                    baseVisualShapeIndex = p.createVisualShapeArray(
-                        shapeTypes=[p.GEOM_SPHERE for i in spheres],
-                        radii=[0.02 for i in spheres],
-                        rgbaColors=sphere_colours,
-                        visualFramePositions=sphere_positions,
-                        physicsClientId=cid
-                    )
+                            baseVisualShapeIndex = p.createVisualShapeArray(
+                                shapeTypes=[p.GEOM_SPHERE for i in spheres],
+                                radii=[0.02 for i in spheres],
+                                rgbaColors=sphere_colours,
+                                visualFramePositions=sphere_positions,
+                                physicsClientId=cid
+                            )
 
-                    indices.append(
-                        p.createMultiBody(
-                            baseMass=0, 
-                            basePosition=[df['X'][i*max_body], df['Y'][i*max_body], df['Z'][i*max_body]],
-                            baseVisualShapeIndex=baseVisualShapeIndex, 
-                            physicsClientId=cid
-                        )
-                    )
+                            indices.append(
+                                p.createMultiBody(
+                                    baseMass=0, 
+                                    basePosition=[df['X'][i*max_body], df['Y'][i*max_body], df['Z'][i*max_body]],
+                                    baseVisualShapeIndex=baseVisualShapeIndex, 
+                                    physicsClientId=cid
+                                )
+                            )
+                except:
+                    pass
+                finally:
+                    print("Pybullet viewer complete.")
 
             if output_html:
                 io.write_html(fig, os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', "resources", "Reach.html"), include_plotlyjs='cdn', auto_open=True)
-            if pybullet_view:
-                print("")
-                input("Press to exit!")
-                print("")
-                return indices
+            # if pybullet_view:
+            #     print("")
+            #     input("Press to exit!")
+            #     print("")
+            #     return indices
         else:
             fig = plt.figure()
             ax = plt.axes(projection='3d')
@@ -389,15 +395,27 @@ class Reachability(object):
 
 
 if __name__ == "__main__":
-    preload = True
+    import sys
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-n", "--create", action="store_true", help="Create a new reachmap. If not then load from file")
+    parser.add_argument("-o", "--html", action="store_true", help="Outputs reachmap plot to a HTML file (in resources)")
+    parser.add_argument("-p", "--pb_view", action="store_true", help="View reachmap in pyBullet (slow)")
+    args = parser.parse_args()
+
+    preload=not(bool(args.create))
+    pbview = bool(args.pb_view)
+    htmlout = bool(args.html)
+
     Disconnect()
     test = Reachability()
 
     if preload:
         test.load_data(file=test.reach_file_collisions)  
     else:
-        test.generate_map(collisions=False)
-        test.dump_data(file=test.reach_file)
+        #test.generate_map(collisions=False)
+        #test.dump_data(file=test.reach_file)
 
         test.generate_map(collisions=True)
         test.dump_data(file=test.reach_file_collisions)
@@ -405,5 +423,5 @@ if __name__ == "__main__":
         # For overnight run, hibernate after
         #os.system("Rundll32.exe Powrprof.dll,SetSuspendState Sleep")
 
-    test.view_data()
+    test.view_data(pybullet_view=pbview, output_html=htmlout)
 

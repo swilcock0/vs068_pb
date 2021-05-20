@@ -6,9 +6,12 @@
     "subcategory": "MAIN",
 
     "ghpython": {
+        "iconDisplay": 2,
+        
         "inputParameters": [
             {
-                "name": "on"
+                "name": "on",
+                "typeHintID": "bool"
             }
         ]
     }

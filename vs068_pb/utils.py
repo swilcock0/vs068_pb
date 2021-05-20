@@ -169,7 +169,7 @@ def Step(steps = 10000, sleep = 1, cid=0, botId=0):
             
     for i in range(0, steps):
         config.prev_pose = p.getLinkState(botId, config.EEF_ID)[0]
-        p.stepSimulation(cid)
+        #p.stepSimulation(cid)
         
         if sleep == 1:
             time.sleep(config.T_STEP)
@@ -296,8 +296,9 @@ def MiscControl(botId, cid):
         config.inc = -config.inc
         
     # Control the joints
-    p.setJointMotorControlArray(botId, [2,4,5], p.POSITION_CONTROL, [config.a, config.a/4-1, config.a], positionGains=3*[0.1])
-    
+    #p.setJointMotorControlArray(botId, [2,4,5], p.POSITION_CONTROL, [config.a, config.a/4-1, config.a], positionGains=3*[0.1])
+    set_joint_states(cid, botId, [2,4,5], [config.a, config.a/4-1, config.a], [0,0,0])
+
 def ParamControl(botId, cid):
     ''' Move the joints based on slider values '''
     # Arrays to hold joint indices, and position values
@@ -310,8 +311,8 @@ def ParamControl(botId, cid):
             control_array.append(key)
             position_array.append(radians(p.readUserDebugParameter(config.params[key], cid))) # Build the joint position array
     # Control the joints
-    p.setJointMotorControlArray(botId, control_array, p.POSITION_CONTROL, position_array, positionGains=len(control_array)*[0.1])
-
+    #p.setJointMotorControlArray(botId, control_array, p.POSITION_CONTROL, position_array, positionGains=len(control_array)*[0.1])
+    set_joint_states(cid, botId, control_array, position_array, [0]*len(control_array))
 
 ''' Helper utils - nicked from caelan/pybullet_planning '''
 
@@ -680,15 +681,39 @@ def set_joint_positions(cid, body, joints, values):
         set_joint_position(cid, body, joint, value)
 
 
-def quick_load_bot(mode=p.DIRECT, physicsClient=-1, collisions = True, fullscreen = True):
-    with HideOutput():
+def quick_load_bot(mode=p.DIRECT, physicsClient=-1, collisions = True, fullscreen = True, quiet=True):
+    if quiet:
+        with HideOutput():
+            if physicsClient == -1:
+                if fullscreen:
+                    gui_options = "--width="+str(config.screen_width)+" --height="+str(config.screen_height)
+                    physicsClient = p.connect(mode, options=gui_options)
+                    #p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
+                else:
+                    physicsClient = p.connect(mode)
+
+            p.resetDebugVisualizerCamera(cameraDistance=1.7, 
+                                        cameraYaw=45.0, 
+                                        cameraPitch=-20.0, 
+                                        cameraTargetPosition=[0,0,0.8])
+
+            p.setAdditionalSearchPath(config.src_fldr)
+            startPos = [0,0,0]
+            startOrientation = p.getQuaternionFromEuler([0,0,0])
+            if collisions:
+                botId = p.loadURDF(config.urdf, startPos, startOrientation, useFixedBase=1, flags=p.URDF_USE_SELF_COLLISION)
+            else:    
+                botId = p.loadURDF(config.urdf, startPos, startOrientation, useFixedBase=1, flags=p.URDF_IGNORE_COLLISION_SHAPES)
+
+            return botId, physicsClient
+    else:
         if physicsClient == -1:
-            if fullscreen:
-                gui_options = "--width="+str(config.screen_width)+" --height="+str(config.screen_height)
-                physicsClient = p.connect(mode, options=gui_options)
-                #p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
-            else:
-                physicsClient = p.connect(mode)
+                if fullscreen:
+                    gui_options = "--width="+str(config.screen_width)+" --height="+str(config.screen_height)
+                    physicsClient = p.connect(mode, options=gui_options)
+                    #p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
+                else:
+                    physicsClient = p.connect(mode)
 
         p.resetDebugVisualizerCamera(cameraDistance=1.7, 
                                     cameraYaw=45.0, 

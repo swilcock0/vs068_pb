@@ -1,0 +1,31 @@
+{
+    "name": "Load robot artist",
+    "nickname": "LoadArmArtist",
+    "description": "Loads the robot model into Rhino",
+    "category": "VS068",
+    "subcategory": "MAIN",
+
+    "ghpython": {
+        "marshalOutGuids": true,
+        "iconDisplay": 2,
+        
+        "inputParameters": [
+            {
+                "name": "scale_factor",
+                "typeHintID": "float"
+            },
+            {
+                "name": "load",
+                "typeHintID": "bool"
+            }
+        ],
+        "outputParameters": [
+            {
+                "name": "robot"
+            },
+            {
+                "name": "visual"
+            }
+        ]
+    }
+}

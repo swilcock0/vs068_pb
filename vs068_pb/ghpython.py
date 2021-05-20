@@ -1,7 +1,13 @@
+from vs068_pb.utils import quick_load_bot
 import numpy as np
 import pybullet as p
 import vs068_pb.config as config
+from vs068_pb.planning_scene import Scene, Geometry
 import pybullet_data
+import tempfile
+import os
+
+#tmp = tempfile.TemporaryDirectory()
 # import rhinoscriptsyntax as rs
 # from compas.rpc import Proxy
 
@@ -72,3 +78,64 @@ def load_demo():
     finally:
         Disconnect()
         return config.prev_pose
+
+def is_connected():
+    return p.isConnected() == 1
+
+def load_scene():
+    Disconnect()
+    botId, cid = quick_load_bot(p.GUI, quiet=False)
+
+    scene = Scene(cid, botId)
+    config.SCENE_STORAGE = scene
+
+    return botId, cid
+
+def get_temp_obj_path():
+    config.tmp = tempfile.TemporaryDirectory()
+    return os.path.join(config.tmp.name, "temp.obj")
+
+def clean_temp():
+    config.tmp.cleanup()
+    #config.tmp.close()
+
+def load_mesh(file_id, pos=[1,0,0]):
+    import time
+    import os    
+
+    scene = config.SCENE_STORAGE
+    
+    if scene:
+        mesh_geo = Geometry(physicsClientId=scene.physicsClientId)
+        mesh_geo.define_mesh(file_id, pose_centre=[pos, [0,0,0,1]], scale=1)
+        scene.add_object(mesh_geo)
+        scene.initialise_allowed()
+
+def clear_scene():
+    if config.SCENE_STORAGE:
+        config.SCENE_STORAGE.clear_all()
+
+def get_scene_objects():
+    str_out = ""
+    if config.SCENE_STORAGE:
+        for cobject in config.SCENE_STORAGE.collision_objects:
+            str_out = str_out + cobject.__repr__() + "\n"
+    return str_out
+
+def Disconnect():
+    for i in range(10):
+        try:
+            p.disconnect(i)
+        except:
+            pass
+
+def set_realtime():
+    p.setGravity(0.0, 0.0, -9.81, config.SCENE_STORAGE.physicsClientId)
+    p.setRealTimeSimulation(1, config.SCENE_STORAGE.physicsClientId)
+
+def step(n_it=10):
+    
+    import time
+    for n in range(n_it):
+        p.stepSimulation(config.SCENE_STORAGE.physicsClientId)
+        time.sleep(1/240)
