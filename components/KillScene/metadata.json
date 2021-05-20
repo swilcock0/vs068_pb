@@ -1,0 +1,20 @@
+{
+    "name": "Kill planning scene",
+    "nickname": "KillScene",
+    "description": "Kills the planning scene and clears up",
+    "category": "VS068",
+    "subcategory": "MAIN",
+
+    "ghpython": {
+        "iconDisplay": 2,
+        "marshalOutGuids": true,
+
+        "inputParameters": [
+            {
+                "name": "kill",
+                "allowTreeAccess": true,
+                "typeHintID": "bool"
+            }
+        ]
+    }
+}

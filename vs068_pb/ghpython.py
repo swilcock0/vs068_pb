@@ -116,11 +116,11 @@ def clear_scene():
         config.SCENE_STORAGE.clear_all()
 
 def get_scene_objects():
-    str_out = ""
+    list_out = []
     if config.SCENE_STORAGE:
         for cobject in config.SCENE_STORAGE.collision_objects:
-            str_out = str_out + cobject.__repr__() + "\n"
-    return str_out
+            list_out.append(str(cobject) + " : " + config.SCENE_STORAGE.collision_objects[cobject].__repr__())
+    return list_out
 
 def Disconnect():
     for i in range(10):
@@ -133,9 +133,8 @@ def set_realtime():
     p.setGravity(0.0, 0.0, -9.81, config.SCENE_STORAGE.physicsClientId)
     p.setRealTimeSimulation(1, config.SCENE_STORAGE.physicsClientId)
 
-def step(n_it=10):
-    
+def step(n_it=1000):
     import time
     for n in range(n_it):
         p.stepSimulation(config.SCENE_STORAGE.physicsClientId)
-        time.sleep(1/240)
+        time.sleep(1./240.)
