@@ -1,0 +1,46 @@
+{
+    "name": "Load planning scene (from mesh inputs)",
+    "nickname": "LoadScene",
+    "description": "Loads a planning scene",
+    "category": "VS068",
+    "subcategory": "MAIN",
+
+    "ghpython": {
+        "iconDisplay": 2,
+        "marshalOutGuids": true,
+
+        "inputParameters": [
+            {
+                "name": "on",
+                "allowTreeAccess": true,
+                "typeHintID": "bool"
+            },
+            {
+                "name": "meshes",
+                "allowTreeAccess": true,
+                "scriptParamAccess": "list",
+                "typeHintID": "mesh"
+            },
+            {
+                "name": "scale",
+                "typeHintID": "float"
+            },
+            {
+                "name": "clear",
+                "allowTreeAccess": true,
+                "typeHintID": "bool"
+            },
+            {
+                "name": "concave",
+                "typeHintID": "bool"
+            }
+        ],
+
+        "outputParameters":
+        [
+            {
+                "name": "collision_objects"
+            }
+        ]
+    }
+}
