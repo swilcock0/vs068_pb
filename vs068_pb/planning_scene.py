@@ -3,10 +3,12 @@ from vs068_pb.utils import set_joint_states, Disconnect, loadFloor
 import pybullet as p
 import pybullet_data
 import random
+from collections import OrderedDict
 
 class Scene(object):
     def __init__(self, physicsClientId=-1, botId=-1, quiet=False):
         self.collision_objects = {}
+        self.collision_object_names = {}
         self.object_counter = 1
         self.object_counter_max = 1
         self.allowed = []
@@ -16,6 +18,21 @@ class Scene(object):
             self.initialise_collision_fn()
         self.floor_id = -1
         self.quiet = quiet
+        
+
+    def get_scene_dict(self):
+        dict_out = OrderedDict()
+
+        if self.botId != -1:
+            dict_out.update({self.botId : 'bot'})
+        if self.floor_id != -1:
+            dict_out.update({self.floor_id : 'floor'})
+
+        for cobject in self.collision_objects:
+            dict_out.update({self.collision_objects[cobject].id_collision : self.collision_object_names[cobject]})
+            dict_out.move_to_end(self.collision_objects[cobject].id_collision)
+        #print(dict_out)
+        return dict_out
 
     def step(self):
         p.stepSimulation(physicsClientId=self.physicsClientId)
@@ -29,6 +46,7 @@ class Scene(object):
             self.collision_objects[cobject].match_poses()
 
     def add_floor(self):
+        p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         planeId = p.loadURDF("plane.urdf", physicsClientId=self.physicsClientId)
 
@@ -60,8 +78,15 @@ class Scene(object):
     def assign_bot(self, botId):
         self.botId = botId
 
-    def add_object(self, geometry):
+    def add_object(self, geometry, name=None):
         self.collision_objects.update({self.object_counter_max : geometry})
+
+        if name == None:
+            name = "Geom_"+str(self.object_counter_max)
+        else:
+            name = name + "_" +str(self.object_counter_max)
+        self.collision_object_names.update({self.object_counter_max : name})
+
         self.object_counter += 1
         self.object_counter_max += 1
         geometry.add_collision()
@@ -69,8 +94,10 @@ class Scene(object):
         
 
     def remove_object(self, object_count):
+        id_num = self.collision_objects[object_count].id_collision
         self.collision_objects[object_count].clear()
         del self.collision_objects[object_count]
+        del self.collision_object_names[id_num]
         self.object_counter -= 1
 
     def clear_all(self):
@@ -78,6 +105,7 @@ class Scene(object):
             self.collision_objects[g].clear()
 
         self.collision_objects = {}
+        self.collision_object_names = {}
         self.object_counter = 1
         self.object_counter_max = 1
 

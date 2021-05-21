@@ -29,6 +29,10 @@
                 "name": "clear",
                 "allowTreeAccess": true,
                 "typeHintID": "bool"
+            },
+            {
+                "name": "concave",
+                "typeHintID": "bool"
             }
         ],
 
