@@ -1,3 +1,7 @@
+# Set python output to log file (deals with many problems with the RPC receiving no output)
+import sys
+sys.stdout = open(os.path.join(config.src_fldr, "ghpython_log.txt"), 'w')
+
 from vs068_pb.utils import quick_load_bot, set_joint_states
 import numpy as np
 import pybullet as p
@@ -6,15 +10,26 @@ from vs068_pb.planning_scene import Scene, Geometry
 import pybullet_data
 import tempfile
 import os
+import atexit
 
-#tmp = tempfile.TemporaryDirectory()
-# import rhinoscriptsyntax as rs
-# from compas.rpc import Proxy
+''' Example usage in Grasshopper:
+import rhinoscriptsyntax as rs
+from compas.rpc import Proxy
 
-## pythonw prevents a window from opening
-# with Proxy('vs068_pb.ghpython', python='C:\Users\Sam\Anaconda3\envs\project\pythonw.exe') as proxy:
+with Proxy('vs068_pb.ghpython', python='C:\Users\Sam\Anaconda3\envs\project\python.exe') as proxy:
+    proxy.run_test()
 
-#     proxy.run_test()
+## Or, without context managers
+proxy = Proxy('vs068_pb.ghpython', python='C:\Users\Sam\Anaconda3\envs\project\python.exe')
+proxy.run_test()
+proxy.stop_server()
+
+'''
+
+@atexit.register
+def clean_stdout():
+    ''' Ensure we clean up the logfile when the module is unloaded '''
+    sys.stdout.close()    
 
 def run_test():
     import sys
@@ -159,3 +174,7 @@ def set_joint_positions(q_vals):
         scene = config.SCENE_STORAGE
 
         set_joint_states(scene.physicsClientId, scene.botId, config.info.free_joints + config.FINGER_JOINTS, q_vals, [0]*len(q_vals))
+
+if __name__ == '__main__':
+    run_test()
+    clean_stdout()
