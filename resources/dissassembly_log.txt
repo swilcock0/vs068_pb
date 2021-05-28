@@ -1,0 +1,6 @@
+Logfile time:  28/05/2021 19:03:15
+Loading directions...
+Initialised successfully
+Running disassembler
+Closing logfile at time:  28/05/2021 19:03:16
+
