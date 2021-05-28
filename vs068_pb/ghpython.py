@@ -61,7 +61,6 @@ def load_reach_data():
 def load_demo():
     from vs068_pb.utils import Disconnect, SetupParams, Step
     try:
-        config.DEBUG = False
         Disconnect() # Ensure any stray servers are shut down
         gui_options = "--width="+str(config.screen_width)+" --height="+str(config.screen_height) # Setup screen width/height string
         physicsClient = p.connect(p.GUI, options= gui_options) # Connect to a physics client 
@@ -214,11 +213,11 @@ def check_contacts():
     else:
         return 0
 
-def plan_to_config():
-    if config.SCENE_STORAGE:
-        scene = config.SCENE_STORAGE
+# def plan_to_config():
+#     if config.SCENE_STORAGE:
+#         scene = config.SCENE_STORAGE
 
-        scene.
+#         scene.
 
 def clear_contacts():
     if config.SCENE_STORAGE:
@@ -272,6 +271,12 @@ def display_contacts(step_sim=False):
     else:
         return 0
 
-if __name__ == '__main__':
-    run_test()
-    clean_stdout()
+def get_disassembly():
+    from vs068_pb.disassembly import Assembly
+    test = Assembly()
+    elements, directions = test.disassemble_loosest()
+    return elements,directions
+
+
+# if __name__ == '__main__':
+#     load_scene()

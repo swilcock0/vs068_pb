@@ -169,7 +169,7 @@ def Step(steps = 10000, sleep = 1, cid=0, botId=0):
             
     for i in range(0, steps):
         config.prev_pose = p.getLinkState(botId, config.EEF_ID)[0]
-        #p.stepSimulation(cid)
+        p.stepSimulation(cid)
         
         if sleep == 1:
             time.sleep(config.T_STEP)
@@ -186,10 +186,10 @@ def Step(steps = 10000, sleep = 1, cid=0, botId=0):
         else:
             MiscControl(botId, cid)
         
-        # camera_ctr += 1
-        # if camera_ctr == config.ENG_RATE/config.CAMERA_RATE:
-        #     Camera(cid, botId, 11)
-        #     camera_ctr = 0
+        camera_ctr += 1
+        if camera_ctr == config.ENG_RATE/config.CAMERA_RATE:
+            Camera(cid, botId, 11)
+            camera_ctr = 0
         
         config.SIM_T += config.T_STEP
         if config.PRINT_SIM_T:
@@ -255,9 +255,11 @@ def SetupParams(botId, cid):
     for i in range(p.getNumJoints(botId)):
         item = p.getJointInfo(botId, i) # Get the joint info
         # Here, check that the joint is movable
-        if item[2] == p.JOINT_REVOLUTE or item[2] == p.JOINT_PRISMATIC:
+        if item[2] == p.JOINT_REVOLUTE:
             # If we can move it, assign a slider to it
             output_params[item[0]] = p.addUserDebugParameter(item[1].decode('UTF-8'), degrees(item[8]), degrees(item[9]), 0.0, cid)
+        if item[2] == p.JOINT_PRISMATIC:
+            output_params[item[0]] = p.addUserDebugParameter(item[1].decode('UTF-8'), item[8], item[9], 0.0, cid)
             
     # Add button to change control method
     output_params['button'] = p.addUserDebugParameter('Switch control', 1, 0, 0, cid)
@@ -296,8 +298,8 @@ def MiscControl(botId, cid):
         config.inc = -config.inc
         
     # Control the joints
-    #p.setJointMotorControlArray(botId, [2,4,5], p.POSITION_CONTROL, [config.a, config.a/4-1, config.a], positionGains=3*[0.1])
-    set_joint_states(cid, botId, [2,4,5], [config.a, config.a/4-1, config.a], [0,0,0])
+    p.setJointMotorControlArray(botId, [2,4,5], p.POSITION_CONTROL, [config.a, config.a/4-1, config.a], positionGains=3*[0.1])
+    #set_joint_states(cid, botId, [2,4,5], [config.a, config.a/4-1, config.a], [0,0,0])
 
 def ParamControl(botId, cid):
     ''' Move the joints based on slider values '''
@@ -309,10 +311,13 @@ def ParamControl(botId, cid):
     for key in config.params:
         if str(key).isalpha() == False: # Ensure the param is a slider (with a numeric key)
             control_array.append(key)
-            position_array.append(radians(p.readUserDebugParameter(config.params[key], cid))) # Build the joint position array
+            position_array.append(p.readUserDebugParameter(config.params[key], cid)) # Build the joint position array
     # Control the joints
-    #p.setJointMotorControlArray(botId, control_array, p.POSITION_CONTROL, position_array, positionGains=len(control_array)*[0.1])
-    set_joint_states(cid, botId, control_array, position_array, [0]*len(control_array))
+    for q_n in range(len(control_array)):
+        if control_array[q_n] not in config.FINGER_JOINTS:
+            position_array[q_n] = radians(position_array[q_n])
+    p.setJointMotorControlArray(botId, control_array, p.POSITION_CONTROL, position_array, positionGains=len(control_array)*[0.1])
+    #set_joint_states(cid, botId, control_array, position_array, [0]*len(control_array))
 
 ''' Helper utils - nicked from caelan/pybullet_planning '''
 
@@ -681,7 +686,7 @@ def set_joint_positions(cid, body, joints, values):
         set_joint_position(cid, body, joint, value)
 
 
-def quick_load_bot(mode=p.DIRECT, physicsClient=-1, collisions = True, fullscreen = True, quiet=True):
+def quick_load_bot(mode=p.DIRECT, physicsClient=-1, collisions = True, fullscreen = True, quiet=False):
     if quiet:
         with HideOutput():
             if physicsClient == -1:
@@ -1025,3 +1030,9 @@ def flip_dict(dictionary):
     reversed_dictionary = {value : key for (key, value) in dictionary.items()}
 
     return reversed_dictionary
+
+def run_shared_physics():
+    import subprocess
+    DETACHED_PROCESS = 8
+    executable = os.path.join(config.src_fldr, "SharedMemoryPhysicsServer.exe")
+    subprocess.Popen(executable, creationflags=DETACHED_PROCESS)
