@@ -302,7 +302,7 @@ class Assembly(object):
         else:
             return True
 
-    def disassemble_all(self, state=None, base=None, fixed_base=True, successful=[]):
+    def recursive_disassembler(self, state=None, base=None, fixed_base=True, successful=[]):
         if state == None:
             state = self.save_state()            
 
@@ -318,6 +318,8 @@ class Assembly(object):
         if fixed_base:
             free_elements = [i for i in free_elements if i not in self.base]
         
+        free_elements = [f for f in free_elements if check_succession(f)]
+
         if len(free_elements) == 0:
             print("No free elements here! Back up a level to element {}".format(base.id_e))
             return
@@ -359,7 +361,7 @@ class Assembly(object):
             else:
                 current_state = self.save_state()
 
-                gen_diss = self.disassemble_all(state=current_state, base = new_node, fixed_base=fixed_base, successful=successful)
+                gen_diss = self.recursive_disassembler(state=current_state, base = new_node, fixed_base=fixed_base, successful=successful)
 
                 for successes in gen_diss:
                     #print("Here")
@@ -371,7 +373,28 @@ class Assembly(object):
         #yield successful
         return 
 
+    def disassembly_tree(self, time_limit = 10):
+        start_time = time.time()
+        end_time = time_limit
+        gen_diss = self.recursive_disassembler()
 
+        while time.time() - start_time < end_time:
+            try:
+                elements = next(gen_diss)
+            except StopIteration:
+                print("We must have found all disassemblies! Saving")
+                print("Time taken : {} seconds".format(int(time.time() - start_time)))
+                self.save_to_pickle(elements, self.tree_pickle)
+                break
+        
+        if time.time() - start_time > end_time:
+            print("Timed out at {} seconds".format(int(time.time() - start_time)))
+
+        print("{} possible disassemblies.".format(len(elements)))
+        for i in elements:
+            #config_retrace(elements[i])
+            if len(config_retrace(i)) != len(config_retrace(elements[0])):
+                config_retrace(elements[i])
 
     def disassemble_loosest(self, fixed_base=True):
         """ 
@@ -501,27 +524,8 @@ if __name__ == '__main__':
     def disassemble():
         test = Assembly()
         
-        start_time = time.time()
-        end_time = 3000
-        gen_diss = test.disassemble_all()
+        test.disassembly_tree(3000)
 
-        while time.time() - start_time < end_time:
-            try:
-                elements = next(gen_diss)
-            except StopIteration:
-                print("We must have found all disassemblies! Saving")
-                print("Time taken : {} seconds".format(int(time.time() - start_time)))
-                test.save_to_pickle(elements, test.tree_pickle)
-                break
-        
-        if time.time() - start_time > end_time:
-            print("Timed out at {} seconds".format(int(time.time() - start_time)))
-
-        print(len(elements))
-        for i in elements:
-            #config_retrace(elements[i])
-            if len(config_retrace(i)) != len(config_retrace(elements[0])):
-                config_retrace(elements[i])
 
     def check_succession():
         test = Assembly()
