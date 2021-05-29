@@ -318,7 +318,7 @@ class Assembly(object):
         if fixed_base:
             free_elements = [i for i in free_elements if i not in self.base]
         
-        free_elements = [f for f in free_elements if check_succession(f)]
+        free_elements = [f for f in free_elements if self.check_succession(f)]
 
         if len(free_elements) == 0:
             print("No free elements here! Back up a level to element {}".format(base.id_e))
@@ -327,13 +327,13 @@ class Assembly(object):
         num_left = len(self.current_assembly)
         if fixed_base:
             num_left -= len(self.base)
-        print("{} left".format(num_left))
+        #print("{} left".format(num_left))
 
         i = 0
         i_max = len(free_elements)
         while (True):
             if i >= i_max:
-                print("No MORE free elements! Back up a level to element {}".format(base.id_e))
+                #print("No MORE free elements! Back up a level to element {}".format(base.id_e))
                 return
 
             element = free_elements[i]
@@ -352,10 +352,12 @@ class Assembly(object):
 
 
             if num_left == 0:
-                print("Success!")
+                #print("Success!")
                 #print(new_node)
                 #successful.append(new_node)
                 successful += [new_node]
+                if len(successful) % 10 == 0:
+                    print("{} successes".format(len(successful)))
                 yield successful
                 return
             else:
@@ -448,20 +450,19 @@ class Assembly(object):
 
     def save_state(self):
         current_assembly = self.current_assembly
-        # liaison_matrix = self.liaison_matrix
-        # current_frees = self.current_frees
-        # current_blocked = self.current_blocked
+        liaison_matrix = self.liaison_matrix
+        current_frees = self.current_frees
+        current_blocked = self.current_blocked
 
-        return pickle.dumps(current_assembly)
+        return pickle.dumps([current_assembly, liaison_matrix, current_frees, current_blocked])
 
     def load_state(self, state):
-        current_assembly = pickle.loads(state)
-        #, liaison_matrix, current_frees, current_blocked
+        current_assembly, liaison_matrix, current_frees, current_blocked = pickle.loads(state)
         self.current_assembly = current_assembly
-        # self.liaison_matrix = liaison_matrix
-        # self.current_frees = current_frees
-        # self.current_blocked = current_blocked
-        self.combine_all()
+        self.liaison_matrix = liaison_matrix
+        self.current_frees = current_frees
+        self.current_blocked = current_blocked
+        #self.combine_all()
 
     def save_assembly(self):
         data = {
