@@ -33,6 +33,8 @@ class TreeNode(object):
         self.parent = parent
         self.children = []
         self.num_left = num_left
+        if parent != None:
+            parent.children.append(self)
 
     def retrace(self):
         sequence = []
@@ -168,10 +170,11 @@ class Assembly(object):
                 self.succession.append(-1)
                 
 
-    def combine_all(self):
+    def combine_all(self, blocked=True):
         self.current_frees = [self.combine_ndfgs(i) for i in self.current_assembly]
         self.free_dict = {i : self.combine_ndfgs(i) for i in self.current_assembly}
-        self.current_blocked = [self.free_to_blocking(i) for i in self.current_frees]
+        if blocked:
+            self.current_blocked = [self.free_to_blocking(i) for i in self.current_frees]
 
     def combine_ndfgs(self, element_num):
         free_lists = []
@@ -233,7 +236,7 @@ class Assembly(object):
         else:
             return True
 
-    def recursive_disassembler(self, state=None, base=None, fixed_base=True, successful=[]):
+    def recursive_disassembler(self, state=None, base=None, fixed_base=True, successful=[], min_freedom=0):
         if state == None:
             state = self.save_state()            
 
@@ -244,22 +247,24 @@ class Assembly(object):
             successful = []
         # else:
         #     print(successful)
-
-        free_elements = self.order_by_freedom()
+         
+        free_elements = self.order_by_freedom(min_freedom=min_freedom)
         if fixed_base:
             free_elements = [i for i in free_elements if i not in self.base]
         
         free_elements = [f for f in free_elements if self.check_succession(f)]
+        if len(free_elements) > 2:
+            free_elements = free_elements[:2]
 
         if len(free_elements) == 0:
-            print("No free elements here! Back up a level to element {}".format(base.id_e))
+            #print("No free elements here! Back up a level to element {}".format(base.id_e))
             return
        
         num_left = len(self.current_assembly)
         if fixed_base:
             num_left -= len(self.base)
         #print("{} left".format(num_left))
-
+        
         i = 0
         i_max = len(free_elements)
         while (True):
@@ -274,7 +279,7 @@ class Assembly(object):
 
             self.load_state(state)
             self.remove_element(element)
-            self.combine_all()
+            self.combine_all(blocked=False)
             num_left = len(self.current_assembly)
             if fixed_base: 
                 num_left -= len(self.base)
@@ -287,14 +292,14 @@ class Assembly(object):
                 #print(new_node)
                 #successful.append(new_node)
                 successful += [new_node]
-                if len(successful) % 10 == 0:
+                if len(successful) % 1 == 0:
                     print("{} successes".format(len(successful)))
                 yield successful
                 return
             else:
                 current_state = self.save_state()
 
-                gen_diss = self.recursive_disassembler(state=current_state, base = new_node, fixed_base=fixed_base, successful=successful)
+                gen_diss = self.recursive_disassembler(state=current_state, base = new_node, fixed_base=fixed_base, successful=successful, min_freedom=min_freedom)
 
                 for successes in gen_diss:
                     #print("Here")
@@ -306,11 +311,11 @@ class Assembly(object):
         #yield successful
         return 
 
-    def disassembly_tree(self, time_limit = 10):
+    def disassembly_tree(self, time_limit = 10, min_freedom=0):
         start_time = time.time()
         end_time = time_limit
-        gen_diss = self.recursive_disassembler()
-
+        gen_diss = self.recursive_disassembler(min_freedom=min_freedom)
+        
         while time.time() - start_time < end_time:
             try:
                 elements = next(gen_diss)
@@ -456,7 +461,7 @@ if __name__ == '__main__':
     def disassemble():
         test = Assembly()
         
-        test.disassembly_tree(60)
+        test.disassembly_tree(60*60*3, min_freedom=3)
 
 
     def check_succession():
@@ -467,4 +472,7 @@ if __name__ == '__main__':
         # print(test.succession[12])
         for el in [49, 25, 73]:
             print(test.succession[el])
-    disassemble()
+
+
+    import cProfile
+    cProfile.run('disassemble()')
