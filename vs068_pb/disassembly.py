@@ -46,13 +46,6 @@ class TreeNode(object):
         return "Node" + '(' + str(self.id_e) + ', ' + str(len(self.children)) + ')'
     __repr__ = __str__
 
-def config_retrace(node):
-    path_lst = []
-    for n in node.retrace():
-        path_lst.append(n.id_e)
-    #print(path_lst)
-    return path_lst
-
 class Assembly(object):
     def __init__(self, free_directions=None, test_directions=None, liaisons=None, centroids=None):
         self.pickle_file = os.path.join(config.src_fldr, "pickles", "assembly.pickle")
@@ -202,82 +195,20 @@ class Assembly(object):
     Valid disassembly finding
     """
 
-    def display(self, nodes):
-        if nodes is None:
-            return None
-        return list(map(lambda n: n.id_e, nodes))
+    def list_retrace(self, node):
+        path_lst = []
+        for n in node.retrace():
+            path_lst.append(n.id_e)
+        #print(path_lst)
+        return path_lst
 
-
-    def disassemble(self, state=None, nodes=None, start_time=-1, end_time=-1, depth=0):
-        # Build first nodes
-        if start_time == -1 or end_time == -1:
-            raise Exception("Require a start and end time (or it will go on forever!)")
-        if time.time()-start_time > end_time:
-            return
-        if nodes == None:
-            nodes = [TreeNode()]
-            base = True
-            print("Base")
-        else:
-            base = False
-        
-        if state == None:
-            state = self.save_state()
-
-        success = False
-
-        free_elements = []
-        free_dir_lens = []
-        assert len(self.current_frees)==len(self.current_assembly)
-        for i in range(len(self.current_assembly)):
-            if len(self.current_frees[i]) > 1:
-                free_elements.append(self.current_assembly[i])
-                free_dir_lens.append(len(self.current_frees[i])) 
-        #print(free_elements)
-        zipped_lists = zip(free_dir_lens, free_elements)
-        sorted_zipped_lists = sorted(zipped_lists)
-
-        free_elements = [element for _, element in sorted_zipped_lists]
-        print(free_elements)
-        print(depth)
-        depth += 1
-        if free_elements != []:
-            for element in free_elements:    
-                if success:
-                    raise StopIteration
-
-                if time.time() - start_time > end_time:
-                    success = True
-
-                self.load_state(state)
-                self.remove_element(element)
-                self.combine_all()
-                state_new = self.save_state()
-                parent = nodes[-1]
-                child = TreeNode(id_e=element, parent=parent, num_left=len(self.current_assembly))
-                nodes.append(child)
-
-                if len(self.current_assembly) == 0:
-                    print("Found full disassembly")
-                    success = True                    
-                else:
-                    for n, s in self.disassemble(state=state_new, nodes=nodes, start_time=start_time, end_time=end_time, depth=depth):
-                        for n_i in n:
-                            nodes.append(n_i)
-                        if s:
-                            success = True
-
-                yield nodes, success
-        else:
-            raise StopIteration
-
-    def order_by_freedom(self):
+    def order_by_freedom(self, min_freedom=3):
         free_elements = []
         free_dir_lens = []
         
         assert len(self.current_frees)==len(self.current_assembly)
         for i in range(len(self.current_assembly)):
-            if len(self.current_frees[i]) > 1:
+            if len(self.current_frees[i]) > min_freedom:
                 free_elements.append(self.current_assembly[i])
                 free_dir_lens.append(len(self.current_frees[i])) 
         #print(free_elements)
@@ -386,17 +317,17 @@ class Assembly(object):
             except StopIteration:
                 print("We must have found all disassemblies! Saving")
                 print("Time taken : {} seconds".format(int(time.time() - start_time)))
-                self.save_to_pickle(elements, self.tree_pickle)
                 break
         
         if time.time() - start_time > end_time:
             print("Timed out at {} seconds".format(int(time.time() - start_time)))
 
-        print("{} possible disassemblies.".format(len(elements)))
+        print("{} possible disassemblies. Saving...".format(len(elements)))
+        self.save_to_pickle(elements, self.tree_pickle)
         for i in elements:
             #config_retrace(elements[i])
-            if len(config_retrace(i)) != len(config_retrace(elements[0])):
-                config_retrace(elements[i])
+            if len(self.list_retrace(i)) != len(self.list_retrace(elements[0])):
+                self.list_retrace(elements[i])
 
     def disassemble_loosest(self, fixed_base=True):
         """ 
@@ -525,7 +456,7 @@ if __name__ == '__main__':
     def disassemble():
         test = Assembly()
         
-        test.disassembly_tree(3000)
+        test.disassembly_tree(60)
 
 
     def check_succession():
