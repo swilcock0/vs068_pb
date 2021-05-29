@@ -2,7 +2,7 @@ import sys
 import os
 import vs068_pb.config as config
 
-OUT_TO_FILE = True
+OUT_TO_FILE = False
 
 if OUT_TO_FILE:
     sys.stdout = open(os.path.join(config.src_fldr, "dissassembly_log.txt"), 'w') # Change to 'a' for append
@@ -46,10 +46,17 @@ class TreeNode(object):
         return "Node" + '(' + str(self.id_e) + ', ' + str(len(self.children)) + ')'
     __repr__ = __str__
 
+def config_retrace(node):
+    path_lst = []
+    for n in node.retrace():
+        path_lst.append(n.id_e)
+    #print(path_lst)
+    return path_lst
 
 class Assembly(object):
     def __init__(self, free_directions=None, test_directions=None, liaisons=None, centroids=None):
         self.pickle_file = os.path.join(config.src_fldr, "pickles", "assembly.pickle")
+        self.tree_pickle = os.path.join(config.src_fldr, "pickles", "assembly_tree.pickle")
 
         if free_directions == None or test_directions == None or liaisons == None or centroids == None:
             print("Loading directions...")
@@ -237,7 +244,7 @@ class Assembly(object):
         if free_elements != []:
             for element in free_elements:    
                 if success:
-                    return
+                    raise StopIteration
 
                 if time.time() - start_time > end_time:
                     success = True
@@ -262,7 +269,7 @@ class Assembly(object):
 
                 yield nodes, success
         else:
-            return
+            raise StopIteration
 
     def order_by_freedom(self):
         free_elements = []
@@ -294,6 +301,76 @@ class Assembly(object):
                 print(self.succession[element])
         else:
             return True
+
+    def disassemble_all(self, state=None, base=None, fixed_base=True, successful=[]):
+        if state == None:
+            state = self.save_state()            
+
+        if base == None:
+            base = TreeNode()
+        
+        if successful == []:
+            successful = []
+        # else:
+        #     print(successful)
+
+        free_elements = self.order_by_freedom()
+        if fixed_base:
+            free_elements = [i for i in free_elements if i not in self.base]
+        
+        if len(free_elements) == 0:
+            print("No free elements here! Back up a level to element {}".format(base.id_e))
+            return
+       
+        num_left = len(self.current_assembly)
+        if fixed_base:
+            num_left -= len(self.base)
+        print("{} left".format(num_left))
+
+        i = 0
+        i_max = len(free_elements)
+        while (True):
+            if i >= i_max:
+                print("No MORE free elements! Back up a level to element {}".format(base.id_e))
+                return
+
+            element = free_elements[i]
+            if base.id_e == -1:
+                print("Element num {} = {}".format(i, element))
+            i += 1
+
+            self.load_state(state)
+            self.remove_element(element)
+            self.combine_all()
+            num_left = len(self.current_assembly)
+            if fixed_base: 
+                num_left -= len(self.base)
+
+            new_node = TreeNode(id_e=element, parent=base, num_left=num_left)
+
+
+            if num_left == 0:
+                print("Success!")
+                #print(new_node)
+                #successful.append(new_node)
+                successful += [new_node]
+                yield successful
+                return
+            else:
+                current_state = self.save_state()
+
+                gen_diss = self.disassemble_all(state=current_state, base = new_node, fixed_base=fixed_base, successful=successful)
+
+                for successes in gen_diss:
+                    #print("Here")
+                    if len(successes) != len(successful):
+                        successful = successes
+                    #time.sleep(0.001) # May be able to remove now. High RAM usage was caused by addind nodes indiscriminately
+                    yield successful 
+
+        #yield successful
+        return 
+
 
 
     def disassemble_loosest(self, fixed_base=True):
@@ -348,19 +425,20 @@ class Assembly(object):
 
     def save_state(self):
         current_assembly = self.current_assembly
-        liaison_matrix = self.liaison_matrix
-        current_frees = self.current_frees
-        current_blocked = self.current_blocked
+        # liaison_matrix = self.liaison_matrix
+        # current_frees = self.current_frees
+        # current_blocked = self.current_blocked
 
-        return pickle.dumps([current_assembly, liaison_matrix, current_frees, current_blocked])
+        return pickle.dumps(current_assembly)
 
     def load_state(self, state):
-        current_assembly, liaison_matrix, current_frees, current_blocked = pickle.loads(state)
-
+        current_assembly = pickle.loads(state)
+        #, liaison_matrix, current_frees, current_blocked
         self.current_assembly = current_assembly
-        self.liaison_matrix = liaison_matrix
-        self.current_frees = current_frees
-        self.current_blocked = current_blocked
+        # self.liaison_matrix = liaison_matrix
+        # self.current_frees = current_frees
+        # self.current_blocked = current_blocked
+        self.combine_all()
 
     def save_assembly(self):
         data = {
@@ -398,41 +476,59 @@ class Assembly(object):
 
 
 
-# if __name__ == '__main__':
-#     def test_removal_and_frees():
-#         test = Assembly()
-#         ele = 2
-#         print("Free {} ".format(len(test.combine_ndfgs(ele))))    
-#         print("Blocked {} ".format(len(test.free_to_blocking(test.combine_ndfgs(ele)))))
-#         for neighbour in test.get_full_neighbours(ele):
-#             print("Removing element {}".format(neighbour))
-#             test.remove_element(neighbour)
-#             print("Free {} ".format(len(test.combine_ndfgs(ele))))
-#             print("Blocked {} ".format(len(test.free_to_blocking(test.combine_ndfgs(ele)))))
-#         test.reset_assembly()
-#         print([len(free) for free in test.current_frees])
-#         print(np.array(test.liaison_matrix))
+if __name__ == '__main__':
+    def test_removal_and_frees():
+        test = Assembly()
+        ele = 2
+        print("Free {} ".format(len(test.combine_ndfgs(ele))))    
+        print("Blocked {} ".format(len(test.free_to_blocking(test.combine_ndfgs(ele)))))
+        for neighbour in test.get_full_neighbours(ele):
+            print("Removing element {}".format(neighbour))
+            test.remove_element(neighbour)
+            print("Free {} ".format(len(test.combine_ndfgs(ele))))
+            print("Blocked {} ".format(len(test.free_to_blocking(test.combine_ndfgs(ele)))))
+        test.reset_assembly()
+        print([len(free) for free in test.current_frees])
+        print(np.array(test.liaison_matrix))
     
-#     def get_all_free():
-#         test = Assembly()
-#         test.reset_assembly()
+    def get_all_free():
+        test = Assembly()
+        test.reset_assembly()
 
-#         for element in [element for cnt, element in enumerate(test.current_assembly) if len(test.current_frees[cnt]) > 1]:
-#             print(element)
+        for element in [element for cnt, element in enumerate(test.current_assembly) if len(test.current_frees[cnt]) > 1]:
+            print(element)
 
-#     def disassemble():
-#         test = Assembly()
+    def disassemble():
+        test = Assembly()
         
-#         elements, _ = test.disassemble_loosest()
-#         print(elements)
-#         print(len(elements))
+        start_time = time.time()
+        end_time = 3000
+        gen_diss = test.disassemble_all()
 
-#     def check_succession():
-#         test = Assembly()
-#         #print(len(test.succession))
-#         # print(test.precedence[12])
-#         # print(test.succession[test.precedence[12]])
-#         # print(test.succession[12])
-#         for el in [49, 25, 73]:
-#             print(test.succession[el])
-#     disassemble()
+        while time.time() - start_time < end_time:
+            try:
+                elements = next(gen_diss)
+            except StopIteration:
+                print("We must have found all disassemblies! Saving")
+                print("Time taken : {} seconds".format(int(time.time() - start_time)))
+                test.save_to_pickle(elements, test.tree_pickle)
+                break
+        
+        if time.time() - start_time > end_time:
+            print("Timed out at {} seconds".format(int(time.time() - start_time)))
+
+        print(len(elements))
+        for i in elements:
+            #config_retrace(elements[i])
+            if len(config_retrace(i)) != len(config_retrace(elements[0])):
+                config_retrace(elements[i])
+
+    def check_succession():
+        test = Assembly()
+        #print(len(test.succession))
+        # print(test.precedence[12])
+        # print(test.succession[test.precedence[12]])
+        # print(test.succession[12])
+        for el in [49, 25, 73]:
+            print(test.succession[el])
+    disassemble()
