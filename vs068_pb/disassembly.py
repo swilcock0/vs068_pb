@@ -28,11 +28,12 @@ import time
 
 class TreeNode(object):
     
-    def __init__(self, id_e=-1, parent=None, num_left=9999):
+    def __init__(self, id_e=-1, parent=None, cum_freedom=0, num_left=9999):
         self.id_e = id_e
         self.parent = parent
         self.children = []
         self.num_left = num_left
+        self.cum_freedom = cum_freedom
         if parent != None:
             parent.children.append(self)
 
@@ -253,8 +254,8 @@ class Assembly(object):
             free_elements = [i for i in free_elements if i not in self.base]
         
         free_elements = [f for f in free_elements if self.check_succession(f)]
-        if len(free_elements) > 2:
-            free_elements = free_elements[:2]
+        #if len(free_elements) > 2:
+        #    free_elements = free_elements[:2]
 
         if len(free_elements) == 0:
             #print("No free elements here! Back up a level to element {}".format(base.id_e))
@@ -278,13 +279,16 @@ class Assembly(object):
             i += 1
 
             self.load_state(state)
+
+            cum_freedom = base.cum_freedom + len(self.current_frees[self.current_assembly.index(element)])
+            #print(cum_freedom)
             self.remove_element(element)
             self.combine_all(blocked=False)
             num_left = len(self.current_assembly)
             if fixed_base: 
                 num_left -= len(self.base)
 
-            new_node = TreeNode(id_e=element, parent=base, num_left=num_left)
+            new_node = TreeNode(id_e=element, parent=base, num_left=num_left, cum_freedom=cum_freedom)
 
 
             if num_left == 0:
@@ -292,7 +296,7 @@ class Assembly(object):
                 #print(new_node)
                 #successful.append(new_node)
                 successful += [new_node]
-                if len(successful) % 1 == 0:
+                if len(successful) % 100 == 0:
                     print("{} successes".format(len(successful)))
                 yield successful
                 return
@@ -301,8 +305,13 @@ class Assembly(object):
 
                 gen_diss = self.recursive_disassembler(state=current_state, base = new_node, fixed_base=fixed_base, successful=successful, min_freedom=min_freedom)
 
+                n_recurse = 0
                 for successes in gen_diss:
+                    n_recurse += 1
                     #print("Here")
+
+                    if n_recurse > 5*num_left:
+                        return
                     if len(successes) != len(successful):
                         successful = successes
                     #time.sleep(0.001) # May be able to remove now. High RAM usage was caused by addind nodes indiscriminately
@@ -460,8 +469,9 @@ if __name__ == '__main__':
 
     def disassemble():
         test = Assembly()
-        
-        test.disassembly_tree(60*60*3, min_freedom=3)
+        # print([len(i) for i in test.current_frees])
+        # input()
+        test.disassembly_tree(60*60*1.5, min_freedom=3)
 
 
     def check_succession():
