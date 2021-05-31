@@ -35,8 +35,8 @@ class TreeNode(object):
         self.children = []
         self.num_left = num_left
         self.cum_freedom = cum_freedom
-        if parent != None:
-            parent.children.append(self)
+        # if parent != None:
+        #     parent.children.append(self)
 
     def retrace(self):
         sequence = []
@@ -45,6 +45,18 @@ class TreeNode(object):
             sequence.append(node)
             node = node.parent
         return sequence[::-1]
+
+    def set_success(self):
+        node = self
+        while node is not None:
+            if node.parent is not None:
+                if node not in node.parent.children:
+                    node.parent.children.append(node)
+                    node = node.parent
+                else:
+                    break
+            else:
+                break
 
     def __str__(self):
         return "Node" + '(' + str(self.id_e) + ', ' + str(len(self.children)) + ')'
@@ -298,6 +310,7 @@ class Assembly(object):
                 #print(new_node)
                 #successful.append(new_node)
                 successful += [new_node]
+                new_node.set_success()
                 if len(successful) % 100 == 0:
                     print("{} successes".format(len(successful)))
                 yield successful
@@ -504,7 +517,7 @@ class Assembly(object):
         
         return graph, labels
 
-    def plot_igraph(self):
+    def plot_igraph(self, pyplot_=False):
         graph, labels = self.tree_to_igraph()
         print("Prepping to plot")
         nr_vertices = graph.vcount()
@@ -515,8 +528,22 @@ class Assembly(object):
 
         labels = labels[1:]
         lay = graph.layout('rt')
+
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots()
+        #plt.invert_yaxis()
+        #plt.ylim()
+        ig.plot(graph, target=ax, layout = lay, vertex_label=labels)
+        ax.invert_yaxis()
+        plt.show()
+
         position = {k: lay[k] for k in range(nr_vertices)}
-        Y = [lay[k][1] for k in range(nr_vertices)]
+        for k in position:
+            position[k][0] *= 100
+            position[k][1] *= 200
+        # ig.plot(graph, layout = lay)
+
+        Y = [200*lay[k][1] for k in range(nr_vertices)]
         M = max(Y)
 
         es = ig.EdgeSeq(graph) # sequence of edges
@@ -585,7 +612,8 @@ class Assembly(object):
                     hovermode='closest',
                     plot_bgcolor='rgb(248,248,248)'
                     )
-        fig.show(renderer="browser")
+        if pyplot_:
+            fig.show(renderer="browser")
 
 if __name__ == '__main__':
     def test_removal_and_frees():
