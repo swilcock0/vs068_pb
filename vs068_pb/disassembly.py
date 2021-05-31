@@ -25,6 +25,7 @@ if OUT_TO_FILE:
 import pickle
 import numpy as np
 import time
+import igraph as ig
 
 class TreeNode(object):
     
@@ -237,7 +238,7 @@ class Assembly(object):
         else:
             return True
 
-    def recursive_disassembler(self, state=None, base=None, fixed_base=True, successful=[], min_freedom=0):
+    def recursive_disassembler(self, state=None, base=None, fixed_base=True, successful=[], min_freedom=0, depth_mult=5):
         if state == None:
             state = self.save_state()            
 
@@ -303,15 +304,15 @@ class Assembly(object):
             else:
                 current_state = self.save_state()
 
-                gen_diss = self.recursive_disassembler(state=current_state, base = new_node, fixed_base=fixed_base, successful=successful, min_freedom=min_freedom)
+                gen_diss = self.recursive_disassembler(state=current_state, base = new_node, fixed_base=fixed_base, successful=successful, min_freedom=min_freedom, depth_mult=depth_mult)
 
                 n_recurse = 0
                 for successes in gen_diss:
                     n_recurse += 1
                     #print("Here")
 
-                    if n_recurse > 5*num_left:
-                        return
+                    if n_recurse > depth_mult*num_left:
+                        break
                     if len(successes) != len(successful):
                         successful = successes
                     #time.sleep(0.001) # May be able to remove now. High RAM usage was caused by addind nodes indiscriminately
@@ -321,9 +322,10 @@ class Assembly(object):
         return 
 
     def disassembly_tree(self, time_limit = 10, min_freedom=0):
+        self.reset_assembly()
         start_time = time.time()
         end_time = time_limit
-        gen_diss = self.recursive_disassembler(min_freedom=min_freedom)
+        gen_diss = self.recursive_disassembler(min_freedom=min_freedom, depth_mult=10)
         
         while time.time() - start_time < end_time:
             try:
@@ -355,6 +357,7 @@ class Assembly(object):
         print("Running disassembler")
         directions = []
         elements = []
+        cum_freedom = 0
 
         while( (len(self.current_assembly) != 0 and fixed_base==False) or (len(self.current_assembly)-len(self.base) != 0 and fixed_base == True) ):
             free_elements = self.order_by_freedom()
@@ -378,17 +381,30 @@ class Assembly(object):
                 print("No loose elements found without successive element in assembly! Stopping")
                 break
             
-
-
             elements.append(loosest)
             directions.append(self.free_dict[loosest])
+            cum_freedom += len(self.free_dict[loosest])
 
 
             self.remove_element(loosest)
             self.combine_all()
-        #print(elements)
+        print(cum_freedom)
         return elements, directions
 
+    def reconstruct_from_tree_node(self, node):
+        path = node.retrace()
+        self.reset_assembly()
+        elements = [el.id_e for el in path[1:]]
+        directions = []
+
+        for el in elements:
+            directions.append(self.free_dict[el])
+            self.remove_element(el)
+            self.combine_all()
+
+        return elements, directions
+
+        
     """
     Data saving/loading functions
     """
@@ -420,6 +436,10 @@ class Assembly(object):
         self.save_to_pickle(data)
         print("Saved successfully!")
 
+    def load_tree(self):
+        self.tree = self.load_from_pickle(self.tree_pickle)
+        return self.tree
+
     def load_assembly(self):
         data = self.load_from_pickle()
         self.free_directions = data['free']
@@ -443,7 +463,116 @@ class Assembly(object):
         
         return data
 
+    """
+    Tree display
+    """
 
+    def tree_convert_recurse(self, graph, baseNode, baseID=0, labels=['Full']):
+        #childID = baseID
+        for childNode in baseNode.children:
+            childID = graph.add_vertex()
+            #childID += 1
+            labels.append(str(childNode.id_e))
+            graph.add_edges([(baseID, childID)])
+
+            labels = self.tree_convert_recurse(graph, childNode, baseID=childID, labels=labels)
+
+        return labels
+
+    def tree_to_igraph(self):
+        graph = ig.Graph(directed=True)
+        
+        nodes = []
+
+        baseNode = self.tree[0].retrace()[0]
+
+        labels = self.tree_convert_recurse(graph, baseNode)
+        #graph.vs["label"] = labels
+        
+        return graph, labels
+
+    def plot_igraph(self):
+        graph, labels = self.tree_to_igraph()
+        print("Prepping to plot")
+        nr_vertices = graph.vcount()
+        
+        if nr_vertices >= 2000:
+            print("Too many vertices! This will take aaages! Returning")
+            return graph, labels
+
+        labels = labels[1:]
+        lay = graph.layout('rt')
+        position = {k: lay[k] for k in range(nr_vertices)}
+        Y = [lay[k][1] for k in range(nr_vertices)]
+        M = max(Y)
+
+        es = ig.EdgeSeq(graph) # sequence of edges
+        E = [e.tuple for e in graph.es] # list of edges
+
+        L = len(position)
+        Xn = [position[k][0] for k in range(L)]
+        Yn = [2*M-position[k][1] for k in range(L)]
+        Xe = []
+        Ye = []
+        for edge in E:
+            Xe+=[position[edge[0]][0],position[edge[1]][0], None]
+            Ye+=[2*M-position[edge[0]][1],2*M-position[edge[1]][1], None]
+
+        import plotly.graph_objects as go
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=Xe,
+                        y=Ye,
+                        mode='lines',
+                        line=dict(color='rgb(210,210,210)', width=1),
+                        hoverinfo='none'
+                        ))
+        fig.add_trace(go.Scatter(x=Xn,
+                        y=Yn,
+                        mode='markers',
+                        name='bla',
+                        marker=dict(symbol='circle-dot',
+                                        size=18,
+                                        color='#6175c1',    #'#DB4551',
+                                        line=dict(color='rgb(50,50,50)', width=1)
+                                        ),
+                        text=labels,
+                        hoverinfo='text',
+                        opacity=0.8
+                        ))
+
+        def make_annotations(pos, text, font_size=10, font_color='rgb(250,250,250)'):
+            L=len(pos)
+            if len(text)!=L:
+                raise ValueError('The lists pos and text must have the same len')
+            annotations = []
+            for k in range(L):
+                annotations.append(
+                    dict(
+                        text=labels[k], # or replace labels with a different list for the text within the circle
+                        x=pos[k][0], y=2*M-position[k][1],
+                        xref='x1', yref='y1',
+                        font=dict(color=font_color, size=font_size),
+                        showarrow=False)
+                )
+            return annotations
+
+        axis = dict(showline=False, # hide axis line, grid, ticklabels and  title
+            zeroline=False,
+            showgrid=False,
+            showticklabels=False,
+            )
+
+        fig.update_layout(title= 'Tree with Reingold-Tilford Layout',
+                    annotations=make_annotations(position, labels),
+                    font_size=12,
+                    showlegend=False,
+                    xaxis=axis,
+                    yaxis=axis,
+                    margin=dict(l=40, r=40, b=85, t=100),
+                    hovermode='closest',
+                    plot_bgcolor='rgb(248,248,248)'
+                    )
+        fig.show()
 
 if __name__ == '__main__':
     def test_removal_and_frees():
@@ -483,6 +612,29 @@ if __name__ == '__main__':
         for el in [49, 25, 73]:
             print(test.succession[el])
 
+    # import cProfile
+    # cProfile.run('disassemble()')
 
-    import cProfile
-    cProfile.run('disassemble()')
+    def plot_tree():
+        test = Assembly()
+        test.load_tree()
+        test.plot_igraph()
+
+    #plot_tree()
+
+
+    def compare_looseness():
+        test = Assembly()
+
+        _,_a_ = test.disassemble_loosest()
+        tree = test.load_tree()
+
+        #elements, directions = test.disassemble_loosest()
+
+        sorted_tree = sorted(tree, key=lambda x: x.cum_freedom, reverse=True)
+
+        first = sorted_tree[0]
+        print(first.cum_freedom)
+        elements, directions = test.reconstruct_from_tree_node(first)
+    
+    compare_looseness()
