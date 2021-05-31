@@ -158,23 +158,13 @@ class Assembly(object):
         # lst.
         self.precedence = []
         for el in range(self.num_members):
-            neighbours = self.get_full_neighbours(el)
-            ngbr_heights = [self.centroids[p][2] for p in neighbours]
-            # ngbr_cntrs = [self.centroids[p] for p in neighbours]
-            
-            # neighbour_dict = {}
-            # for cnt, n in enumerate(neighbours):
-            #     neighbour_dict.update(
-            #         {
-            #             n : {
-            #                 'x' : ngbr_cntrs[0],
-            #                 'y' : ngbr_cntrs[1],
-            #                 'z' : ngbr_cntrs[2]
-            #             }
-            #         }
-            #     )
-            # sorted_by_height = sorted(neighbours, ngbr_cntrs), key=lambda x:x[2])
-            self.precedence.append(neighbours[ngbr_heights.index(min(ngbr_heights))])
+            if el in self.base:
+                self.precedence.append(-999)
+            else:
+                neighbours = self.get_full_neighbours(el)
+                ngbr_heights = [self.centroids[p][2] for p in neighbours]
+
+                self.precedence.append(neighbours[ngbr_heights.index(min(ngbr_heights))])
 
         self.succession = []
 

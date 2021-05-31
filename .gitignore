@@ -14,3 +14,4 @@ vs068_pb/motion/__pycache__/
 resources/ghpython_log.txt
 resources/dissassembly_log.txt
 resources/pickles/assembly_tree.pickle
+resources/pickles/assembly.pickle
