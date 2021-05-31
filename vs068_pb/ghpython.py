@@ -276,6 +276,7 @@ def display_contacts(step_sim=False):
         return 0
 
 def get_disassembly():
+    print("Calling from disassembly module")
     test = Assembly()
     tree = test.load_tree()
 
@@ -290,5 +291,5 @@ def get_disassembly():
     return elements,directions
 
 
-if __name__ == '__main__':
-    get_disassembly()
+# if __name__ == '__main__':
+#     get_disassembly()

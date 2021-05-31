@@ -51,7 +51,7 @@ class TreeNode(object):
     __repr__ = __str__
 
 class Assembly(object):
-    def __init__(self, free_directions=None, test_directions=None, liaisons=None, centroids=None):
+    def __init__(self, free_directions=None, test_directions=None, liaisons=None, centroids=None, base_ids=[]):
         self.pickle_file = os.path.join(config.src_fldr, "pickles", "assembly.pickle")
         self.tree_pickle = os.path.join(config.src_fldr, "pickles", "assembly_tree.pickle")
 
@@ -67,12 +67,13 @@ class Assembly(object):
             self.test_directions = [tuple(direction) for direction in test_directions]
             self.liaisons = liaisons
             self.centroids = centroids
+            self.base = set(base_ids)
 
             self.save_assembly()
 
 
         
-        self.base = set([0, 23, 24, 47, 48, 71, 72, 95])
+        #self.base = set([0, 23, 24, 47, 48, 71, 72, 95])
         self.num_members = len(self.free_directions)
         self.reset_assembly()
         self.build_precedence()
@@ -326,7 +327,7 @@ class Assembly(object):
         start_time = time.time()
         end_time = time_limit
         gen_diss = self.recursive_disassembler(min_freedom=min_freedom, depth_mult=10)
-        
+        elements = []
         while time.time() - start_time < end_time:
             try:
                 elements = next(gen_diss)
@@ -388,7 +389,14 @@ class Assembly(object):
 
             self.remove_element(loosest)
             self.combine_all()
-        print(cum_freedom)
+
+        lend = [len(d) for d in directions]
+        print(sum(lend))
+        print("Min : {}".format(min(lend)))
+        print("Max : {}".format(max(lend)))
+        print("Ave : {}".format(np.mean(lend)))
+        print("Std : {}".format(np.std(lend)))
+
         return elements, directions
 
     def reconstruct_from_tree_node(self, node):
@@ -430,7 +438,8 @@ class Assembly(object):
             'free' : self.free_directions, 
             'test' : self.test_directions,
             'liaisons' : self.liaisons,
-            'centroids' : self.centroids
+            'centroids' : self.centroids,
+            'base' : self.base
         }
 
         self.save_to_pickle(data)
@@ -446,6 +455,7 @@ class Assembly(object):
         self.test_directions = data['test']
         self.liaisons = data['liaisons']
         self.centroids = data['centroids']
+        self.base = data['base']
 
     def save_to_pickle(self, data, file=None):
         if file==None:
@@ -469,6 +479,9 @@ class Assembly(object):
 
     def tree_convert_recurse(self, graph, baseNode, baseID=0, labels=['Full']):
         #childID = baseID
+        if baseID == 0:
+            baseID = graph.add_vertex()
+            labels.append('Full')
         for childNode in baseNode.children:
             childID = graph.add_vertex()
             #childID += 1
@@ -496,7 +509,7 @@ class Assembly(object):
         print("Prepping to plot")
         nr_vertices = graph.vcount()
         
-        if nr_vertices >= 2000:
+        if nr_vertices >= 10000:
             print("Too many vertices! This will take aaages! Returning")
             return graph, labels
 
@@ -572,7 +585,7 @@ class Assembly(object):
                     hovermode='closest',
                     plot_bgcolor='rgb(248,248,248)'
                     )
-        fig.show()
+        fig.show(renderer="browser")
 
 if __name__ == '__main__':
     def test_removal_and_frees():
@@ -620,13 +633,19 @@ if __name__ == '__main__':
         test.load_tree()
         test.plot_igraph()
 
-    #plot_tree()
+    plot_tree()
 
 
     def compare_looseness():
         test = Assembly()
 
+        print("Greedy")
+        print("---------")
         _,_a_ = test.disassemble_loosest()
+
+
+        print("Recursive")
+        print("---------")
         tree = test.load_tree()
 
         #elements, directions = test.disassemble_loosest()
@@ -634,7 +653,18 @@ if __name__ == '__main__':
         sorted_tree = sorted(tree, key=lambda x: x.cum_freedom, reverse=True)
 
         first = sorted_tree[0]
-        print(first.cum_freedom)
+        fst_path = first.retrace()
+
+        lend = [fst_path[1].cum_freedom]
+
+        for cnt in range(1, len(fst_path)):
+            lend.append(fst_path[cnt].cum_freedom - fst_path[cnt-1].cum_freedom)
+        
+        print(sum(lend))
+        print("Min : {}".format(min(lend)))
+        print("Max : {}".format(max(lend)))
+        print("Ave : {}".format(np.mean(lend)))
+        print("Std : {}".format(np.std(lend)))
         elements, directions = test.reconstruct_from_tree_node(first)
     
-    compare_looseness()
+    #compare_looseness()

@@ -1,6 +1,8 @@
-Logfile time:  28/05/2021 19:03:15
-Loading directions...
-Initialised successfully
-Running disassembler
-Closing logfile at time:  28/05/2021 19:03:16
-
+Logfile time:  31/05/2021 14:03:05
+2330
+Min : 0
+Max : 500
+Std : 72.22010081512802
+2330
+Closing logfile at time:  31/05/2021 14:03:06
+1.72279398249259
