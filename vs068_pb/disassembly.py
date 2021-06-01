@@ -129,9 +129,10 @@ class Assembly(object):
                 self.precedence.append([])
             else:
                 neighbours = self.get_full_neighbours(el)
-                precedence_el = [p for p in neighbours if self.centroids[p][2] < own_z]
+                precedence_el = [p for p in neighbours if self.centroids[p][2] < own_z-0.2]
 
                 self.precedence.append(precedence_el)
+                #break # Comment this out for multiple predecessors
         
         self.succession = [[] for i in range(self.num_members)]
 
@@ -291,7 +292,7 @@ class Assembly(object):
         self.reset_assembly()
         start_time = time.time()
         end_time = time_limit
-        gen_diss = self.recursive_disassembler(min_freedom=min_freedom, depth_mult=10)
+        gen_diss = self.recursive_disassembler(min_freedom=min_freedom, depth_mult=1000)
         elements = []
         while time.time() - start_time < end_time:
             try:
@@ -474,7 +475,7 @@ class Assembly(object):
         print("Prepping to plot")
         nr_vertices = graph.vcount()
         
-        if nr_vertices >= 10000:
+        if nr_vertices >= 100000:
             print("Too many vertices! This will take aaages! Returning")
             return graph, labels
 
@@ -567,6 +568,20 @@ class Assembly(object):
         if pyplot_:
             fig.show(renderer="browser")
 
+    def plot_liaisons(self):
+        graph = ig.Graph()
+        graph.add_vertices(self.num_members)
+
+        for cnt in range(self.num_members):
+            if len(self.liaisons[cnt]) > 0:
+                for i in self.liaisons[cnt]:
+                    if graph.get_eid(cnt, i, directed=False, error=False) == -1:
+                        graph.add_edge(cnt, i)
+        graph.vs["label"] = list(range(self.num_members))
+        
+        layout = graph.layout('circle')
+        ig.plot(graph, layout=layout)
+
     class TreeNode(object):
         def __init__(self, id_e=-1, parent=None, cum_freedom=0, num_left=9999):
             self.id_e = id_e
@@ -601,88 +616,90 @@ class Assembly(object):
             return "Node" + '(' + str(self.id_e) + ', ' + str(len(self.children)) + ')'
         __repr__ = __str__
 
-# if __name__ == '__main__':
-#     def test_removal_and_frees():
-#         test = Assembly()
-#         ele = 2
-#         print("Free {} ".format(len(test.combine_ndfgs(ele))))    
-#         print("Blocked {} ".format(len(test.free_to_blocking(test.combine_ndfgs(ele)))))
-#         for neighbour in test.get_full_neighbours(ele):
-#             print("Removing element {}".format(neighbour))
-#             test.remove_element(neighbour)
-#             print("Free {} ".format(len(test.combine_ndfgs(ele))))
-#             print("Blocked {} ".format(len(test.free_to_blocking(test.combine_ndfgs(ele)))))
-#         test.reset_assembly()
-#         print([len(free) for free in test.current_frees])
-#         print(np.array(test.liaison_matrix))
+if __name__ == '__main__':
+    def test_removal_and_frees():
+        test = Assembly()
+        ele = 2
+        print("Free {} ".format(len(test.combine_ndfgs(ele))))    
+        print("Blocked {} ".format(len(test.free_to_blocking(test.combine_ndfgs(ele)))))
+        for neighbour in test.get_full_neighbours(ele):
+            print("Removing element {}".format(neighbour))
+            test.remove_element(neighbour)
+            print("Free {} ".format(len(test.combine_ndfgs(ele))))
+            print("Blocked {} ".format(len(test.free_to_blocking(test.combine_ndfgs(ele)))))
+        test.reset_assembly()
+        print([len(free) for free in test.current_frees])
+        print(np.array(test.liaison_matrix))
     
-#     def get_all_free():
-#         test = Assembly()
-#         test.reset_assembly()
+    def get_all_free():
+        test = Assembly()
+        test.reset_assembly()
 
-#         for element in [element for cnt, element in enumerate(test.current_assembly) if len(test.current_frees[cnt]) > 1]:
-#             print(element)
+        for element in [element for cnt, element in enumerate(test.current_assembly) if len(test.current_frees[cnt]) > 1]:
+            print(element)
 
-#     def disassemble():
-#         test = Assembly()
-#         # print([len(i) for i in test.current_frees])
-#         # input()
-#         test.disassembly_tree(60*60*1.5, min_freedom=0)
-#     #disassemble()
+    def disassemble():
+        test = Assembly()
+        # print([len(i) for i in test.current_frees])
+        # input()
+        test.disassembly_tree(60*60*1.5, min_freedom=0)
+    #disassemble()
 
-#     def check_succession():
-#         test = Assembly()
-#         #print(len(test.succession))
-#         # print(test.precedence[12])
-#         # print(test.succession[test.precedence[12]])
-#         # print(test.succession[12])
-#         for el in [49, 25, 73]:
-#             print(test.succession[el])
+    def check_succession():
+        test = Assembly()
+        #print(len(test.succession))
+        # print(test.precedence[12])
+        # print(test.succession[test.precedence[12]])
+        # print(test.succession[12])
+        for el in [49, 25, 73]:
+            print(test.succession[el])
 
-#     # import cProfile
-#     # cProfile.run('disassemble()')
+    # import cProfile
+    # cProfile.run('disassemble()')
 
-#     def plot_tree():
-#         test = Assembly()
-#         test.load_tree()
-#         test.plot_igraph()
-
-#     #plot_tree()
+    def plot_tree():
+        test = Assembly()
+        test.load_tree()
+        test.plot_igraph(pyplot_=True)
 
 
-#     def compare_looseness():
-#         test = Assembly()
+    def compare_looseness():
+        test = Assembly()
 
-#         print("Greedy")
-#         print("---------")
-#         _,_a_ = test.disassemble_loosest()
+        print("Greedy")
+        print("---------")
+        _,_a_ = test.disassemble_loosest()
 
 
-#         print("Recursive")
-#         print("---------")
-#         tree = test.load_tree()
+        print("Recursive")
+        print("---------")
+        tree = test.load_tree()
 
-#         #elements, directions = test.disassemble_loosest()
+        #elements, directions = test.disassemble_loosest()
 
-#         sorted_tree = sorted(tree, key=lambda x: x.cum_freedom, reverse=True)
+        sorted_tree = sorted(tree, key=lambda x: x.cum_freedom, reverse=True)
 
-#         first = sorted_tree[0]
-#         fst_path = first.retrace()
+        first = sorted_tree[0]
+        fst_path = first.retrace()
 
-#         lend = [fst_path[1].cum_freedom]
+        lend = [fst_path[1].cum_freedom]
 
-#         for cnt in range(1, len(fst_path)):
-#             lend.append(fst_path[cnt].cum_freedom - fst_path[cnt-1].cum_freedom)
+        for cnt in range(1, len(fst_path)):
+            lend.append(fst_path[cnt].cum_freedom - fst_path[cnt-1].cum_freedom)
         
-#         print(sum(lend))
-#         print("Min : {}".format(min(lend)))
-#         print("Max : {}".format(max(lend)))
-#         print("Ave : {}".format(np.mean(lend)))
-#         print("Std : {}".format(np.std(lend)))
-#         elements, directions = test.reconstruct_from_tree_node(first)
+        print(sum(lend))
+        print("Min : {}".format(min(lend)))
+        print("Max : {}".format(max(lend)))
+        print("Ave : {}".format(np.mean(lend)))
+        print("Std : {}".format(np.std(lend)))
+        elements, directions = test.reconstruct_from_tree_node(first)
     
-#     compare_looseness()
+    #compare_looseness()
+    #plot_tree()
+    # test = Assembly()
+    # print(test.precedence)
+    # print(test.succession)
 
-#     # test = Assembly()
-#     # print(test.precedence)
-#     # print(test.succession)
+    test = Assembly()
+    test.plot_liaisons()
+    print(test.liaisons)
