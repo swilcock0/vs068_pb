@@ -28,7 +28,7 @@ import time
 import igraph as ig
 
 class Assembly(object):
-    def __init__(self, free_directions=None, test_directions=None, liaisons=None, centroids=None, base_ids=[], load_tree=False):
+    def __init__(self, free_directions=None, test_directions=None, liaisons=None, centroids=None, base_ids=[]):
         self.pickle_file = os.path.join(config.src_fldr, "pickles", "assembly.pickle")
         self.tree_pickle = os.path.join(config.src_fldr, "pickles", "assembly_tree.pickle")
 
@@ -54,9 +54,6 @@ class Assembly(object):
         self.num_members = len(self.free_directions)
         self.reset_assembly()
         self.build_precedence()
-
-        if load_tree:
-            self.load_tree()
         
         print("Initialised successfully")
 
