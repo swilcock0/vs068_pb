@@ -15,3 +15,7 @@ resources/ghpython_log.txt
 resources/dissassembly_log.txt
 resources/pickles/assembly_tree.pickle
 resources/pickles/assembly.pickle
+
+*.pickle
+
+resources/pickles/
