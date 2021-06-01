@@ -1,69 +1,34 @@
-import sys
+#import sys
 import os
 import vs068_pb.config as config
 
-OUT_TO_FILE = False
+# OUT_TO_FILE = True
 
-if OUT_TO_FILE:
-    sys.stdout = open(os.path.join(config.src_fldr, "dissassembly_log.txt"), 'w') # Change to 'a' for append
+# if OUT_TO_FILE:
+#     sys.stdout = open(os.path.join(config.src_fldr, "dissassembly_log.txt"), 'w') # Change to 'a' for append
 
-    import atexit
-    from datetime import datetime
+#     import atexit
+#     from datetime import datetime
 
-    load_time = datetime.now()
-    dt_string = load_time.strftime("%d/%m/%Y %H:%M:%S")
-    print("Logfile time: ", dt_string)
+#     load_time = datetime.now()
+#     dt_string = load_time.strftime("%d/%m/%Y %H:%M:%S")
+#     print("Logfile time: ", dt_string)
 
-    @atexit.register
-    def clean_stdout():
-        # Ensure we clean up the logfile when the module is unloaded
-        close_time = datetime.now()
-        dt_string = close_time.strftime("%d/%m/%Y %H:%M:%S")
-        print("Closing logfile at time: ", dt_string)
-        sys.stdout.close()    
+#     @atexit.register
+#     def clean_stdout():
+#         # Ensure we clean up the logfile when the module is unloaded
+#         close_time = datetime.now()
+#         dt_string = close_time.strftime("%d/%m/%Y %H:%M:%S")
+#         print("Closing logfile at time: ", dt_string)
+#         sys.stdout.close()    
 
 import pickle
 import numpy as np
 import time
 import igraph as ig
 
-class TreeNode(object):
-    
-    def __init__(self, id_e=-1, parent=None, cum_freedom=0, num_left=9999):
-        self.id_e = id_e
-        self.parent = parent
-        self.children = []
-        self.num_left = num_left
-        self.cum_freedom = cum_freedom
-        # if parent != None:
-        #     parent.children.append(self)
-
-    def retrace(self):
-        sequence = []
-        node = self
-        while node is not None:
-            sequence.append(node)
-            node = node.parent
-        return sequence[::-1]
-
-    def set_success(self):
-        node = self
-        while node is not None:
-            if node.parent is not None:
-                if node not in node.parent.children:
-                    node.parent.children.append(node)
-                    node = node.parent
-                else:
-                    break
-            else:
-                break
-
-    def __str__(self):
-        return "Node" + '(' + str(self.id_e) + ', ' + str(len(self.children)) + ')'
-    __repr__ = __str__
-
 class Assembly(object):
-    def __init__(self, free_directions=None, test_directions=None, liaisons=None, centroids=None, base_ids=[]):
+    def __init__(self, free_directions=None, test_directions=None, liaisons=None, centroids=None, base_ids=[], load_tree=False):
         self.pickle_file = os.path.join(config.src_fldr, "pickles", "assembly.pickle")
         self.tree_pickle = os.path.join(config.src_fldr, "pickles", "assembly_tree.pickle")
 
@@ -89,6 +54,9 @@ class Assembly(object):
         self.num_members = len(self.free_directions)
         self.reset_assembly()
         self.build_precedence()
+
+        if load_tree:
+            self.load_tree()
         
         print("Initialised successfully")
 
@@ -152,27 +120,27 @@ class Assembly(object):
 
     def build_precedence(self):
         """ 
-        Build lists of precedence and succession relationships (basic, based on picking the lowest neighbour) 
+        Build lists of precedence and succession relationships (basic, based on picking the lower neighbours). 
+        Reset the assembly first!
         """
-        # lst = []
-        # lst.
+
         self.precedence = []
         for el in range(self.num_members):
+            own_z = self.centroids[el][2]
+
             if el in self.base:
-                self.precedence.append(-999)
+                self.precedence.append([])
             else:
                 neighbours = self.get_full_neighbours(el)
-                ngbr_heights = [self.centroids[p][2] for p in neighbours]
+                precedence_el = [p for p in neighbours if self.centroids[p][2] < own_z]
 
-                self.precedence.append(neighbours[ngbr_heights.index(min(ngbr_heights))])
+                self.precedence.append(precedence_el)
+        
+        self.succession = [[] for i in range(self.num_members)]
 
-        self.succession = []
-
-        for el in range(self.num_members):
-            if el in self.precedence:
-                self.succession.append(self.precedence.index(el))
-            else:
-                self.succession.append(-1)
+        for cnt, el in enumerate(self.precedence):
+            for precedent in el:
+                self.succession[precedent].append(cnt)
                 
 
     def combine_all(self, blocked=True):
@@ -232,21 +200,18 @@ class Assembly(object):
         """ 
         Check to stop us from "pulling the rug out" from under an element in disassembly
         """
-        if self.succession[element] == -1 or self.succession[element] in self.base:
-            return True
-        if self.succession[element] in self.current_assembly:
-            return False
-            if output:
-                print(self.succession[element])
-        else:
-            return True
+        for ngbr in self.succession[element]:       
+            if ngbr in self.current_assembly and ngbr not in self.base:
+                return False
+        
+        return True
 
     def recursive_disassembler(self, state=None, base=None, fixed_base=True, successful=[], min_freedom=0, depth_mult=5):
         if state == None:
             state = self.save_state()            
 
         if base == None:
-            base = TreeNode()
+            base = self.TreeNode()
         
         if successful == []:
             successful = []
@@ -292,7 +257,7 @@ class Assembly(object):
             if fixed_base: 
                 num_left -= len(self.base)
 
-            new_node = TreeNode(id_e=element, parent=base, num_left=num_left, cum_freedom=cum_freedom)
+            new_node = self.TreeNode(id_e=element, parent=base, num_left=num_left, cum_freedom=cum_freedom)
 
 
             if num_left == 0:
@@ -605,84 +570,122 @@ class Assembly(object):
         if pyplot_:
             fig.show(renderer="browser")
 
-if __name__ == '__main__':
-    def test_removal_and_frees():
-        test = Assembly()
-        ele = 2
-        print("Free {} ".format(len(test.combine_ndfgs(ele))))    
-        print("Blocked {} ".format(len(test.free_to_blocking(test.combine_ndfgs(ele)))))
-        for neighbour in test.get_full_neighbours(ele):
-            print("Removing element {}".format(neighbour))
-            test.remove_element(neighbour)
-            print("Free {} ".format(len(test.combine_ndfgs(ele))))
-            print("Blocked {} ".format(len(test.free_to_blocking(test.combine_ndfgs(ele)))))
-        test.reset_assembly()
-        print([len(free) for free in test.current_frees])
-        print(np.array(test.liaison_matrix))
+    class TreeNode(object):
+        def __init__(self, id_e=-1, parent=None, cum_freedom=0, num_left=9999):
+            self.id_e = id_e
+            self.parent = parent
+            self.children = []
+            self.num_left = num_left
+            self.cum_freedom = cum_freedom
+            # if parent != None:
+            #     parent.children.append(self)
+
+        def retrace(self):
+            sequence = []
+            node = self
+            while node is not None:
+                sequence.append(node)
+                node = node.parent
+            return sequence[::-1]
+
+        def set_success(self):
+            node = self
+            while node is not None:
+                if node.parent is not None:
+                    if node not in node.parent.children:
+                        node.parent.children.append(node)
+                        node = node.parent
+                    else:
+                        break
+                else:
+                    break
+
+        def __str__(self):
+            return "Node" + '(' + str(self.id_e) + ', ' + str(len(self.children)) + ')'
+        __repr__ = __str__
+
+# if __name__ == '__main__':
+#     def test_removal_and_frees():
+#         test = Assembly()
+#         ele = 2
+#         print("Free {} ".format(len(test.combine_ndfgs(ele))))    
+#         print("Blocked {} ".format(len(test.free_to_blocking(test.combine_ndfgs(ele)))))
+#         for neighbour in test.get_full_neighbours(ele):
+#             print("Removing element {}".format(neighbour))
+#             test.remove_element(neighbour)
+#             print("Free {} ".format(len(test.combine_ndfgs(ele))))
+#             print("Blocked {} ".format(len(test.free_to_blocking(test.combine_ndfgs(ele)))))
+#         test.reset_assembly()
+#         print([len(free) for free in test.current_frees])
+#         print(np.array(test.liaison_matrix))
     
-    def get_all_free():
-        test = Assembly()
-        test.reset_assembly()
+#     def get_all_free():
+#         test = Assembly()
+#         test.reset_assembly()
 
-        for element in [element for cnt, element in enumerate(test.current_assembly) if len(test.current_frees[cnt]) > 1]:
-            print(element)
+#         for element in [element for cnt, element in enumerate(test.current_assembly) if len(test.current_frees[cnt]) > 1]:
+#             print(element)
 
-    def disassemble():
-        test = Assembly()
-        # print([len(i) for i in test.current_frees])
-        # input()
-        test.disassembly_tree(60*60*1.5, min_freedom=3)
+#     def disassemble():
+#         test = Assembly()
+#         # print([len(i) for i in test.current_frees])
+#         # input()
+#         test.disassembly_tree(60*60*1.5, min_freedom=0)
+#     #disassemble()
 
+#     def check_succession():
+#         test = Assembly()
+#         #print(len(test.succession))
+#         # print(test.precedence[12])
+#         # print(test.succession[test.precedence[12]])
+#         # print(test.succession[12])
+#         for el in [49, 25, 73]:
+#             print(test.succession[el])
 
-    def check_succession():
-        test = Assembly()
-        #print(len(test.succession))
-        # print(test.precedence[12])
-        # print(test.succession[test.precedence[12]])
-        # print(test.succession[12])
-        for el in [49, 25, 73]:
-            print(test.succession[el])
+#     # import cProfile
+#     # cProfile.run('disassemble()')
 
-    # import cProfile
-    # cProfile.run('disassemble()')
+#     def plot_tree():
+#         test = Assembly()
+#         test.load_tree()
+#         test.plot_igraph()
 
-    def plot_tree():
-        test = Assembly()
-        test.load_tree()
-        test.plot_igraph()
-
-    plot_tree()
-
-
-    def compare_looseness():
-        test = Assembly()
-
-        print("Greedy")
-        print("---------")
-        _,_a_ = test.disassemble_loosest()
+#     #plot_tree()
 
 
-        print("Recursive")
-        print("---------")
-        tree = test.load_tree()
+#     def compare_looseness():
+#         test = Assembly()
 
-        #elements, directions = test.disassemble_loosest()
+#         print("Greedy")
+#         print("---------")
+#         _,_a_ = test.disassemble_loosest()
 
-        sorted_tree = sorted(tree, key=lambda x: x.cum_freedom, reverse=True)
 
-        first = sorted_tree[0]
-        fst_path = first.retrace()
+#         print("Recursive")
+#         print("---------")
+#         tree = test.load_tree()
 
-        lend = [fst_path[1].cum_freedom]
+#         #elements, directions = test.disassemble_loosest()
 
-        for cnt in range(1, len(fst_path)):
-            lend.append(fst_path[cnt].cum_freedom - fst_path[cnt-1].cum_freedom)
+#         sorted_tree = sorted(tree, key=lambda x: x.cum_freedom, reverse=True)
+
+#         first = sorted_tree[0]
+#         fst_path = first.retrace()
+
+#         lend = [fst_path[1].cum_freedom]
+
+#         for cnt in range(1, len(fst_path)):
+#             lend.append(fst_path[cnt].cum_freedom - fst_path[cnt-1].cum_freedom)
         
-        print(sum(lend))
-        print("Min : {}".format(min(lend)))
-        print("Max : {}".format(max(lend)))
-        print("Ave : {}".format(np.mean(lend)))
-        print("Std : {}".format(np.std(lend)))
-        elements, directions = test.reconstruct_from_tree_node(first)
+#         print(sum(lend))
+#         print("Min : {}".format(min(lend)))
+#         print("Max : {}".format(max(lend)))
+#         print("Ave : {}".format(np.mean(lend)))
+#         print("Std : {}".format(np.std(lend)))
+#         elements, directions = test.reconstruct_from_tree_node(first)
     
-    #compare_looseness()
+#     compare_looseness()
+
+#     # test = Assembly()
+#     # print(test.precedence)
+#     # print(test.succession)

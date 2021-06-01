@@ -277,19 +277,18 @@ def display_contacts(step_sim=False):
 
 def get_disassembly(n = 0):
     print("Calling from disassembly module")
-    test = Assembly()
-    tree = test.load_tree()
-
+    test = Assembly(load_tree=True)
+    tree = test.tree
     #elements, directions = test.disassemble_loosest()
 
     sorted_tree = sorted(tree, key=lambda x: x.cum_freedom, reverse=True)
 
     first = sorted_tree[n]
-
+    
     elements, directions = test.reconstruct_from_tree_node(first)
 
     return elements,directions
 
 
-# if __name__ == '__main__':
-#     get_disassembly()
+if __name__ == '__main__':
+    print(get_disassembly())
