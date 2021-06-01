@@ -13,6 +13,7 @@ import tempfile
 import atexit
 import time
 from datetime import datetime
+import vs068_pb.disassembly as d
 
 load_time = datetime.now()
 dt_string = load_time.strftime("%d/%m/%Y %H:%M:%S")
@@ -40,8 +41,11 @@ def clean_stdout():
 
 @atexit.register
 def clean_temp():
-    if config.tmp:
-        config.tmp.cleanup()
+    try:
+        if config.tmp:
+            config.tmp.cleanup()
+    except:
+        pass
     #config.tmp.close()
 
 def run_test():
@@ -271,12 +275,24 @@ def display_contacts(step_sim=False):
     else:
         return 0
 
-def get_disassembly():
+def get_disassembly(n = 0, rebuild_tree=False):
+    print("Calling from disassembly module")
     from vs068_pb.disassembly import Assembly
-    test = Assembly()
-    elements, directions = test.disassemble_loosest()
+    test = d.Assembly()
+    if rebuild_tree:
+        test.disassembly_tree(time_limit=60*5)
+
+    tree = test.load_tree()
+    #elements, directions = test.disassemble_loosest()
+
+    sorted_tree = sorted(tree, key=lambda x: x.cum_freedom, reverse=True)
+
+    first = sorted_tree[n]
+    
+    elements, directions = test.reconstruct_from_tree_node(first)
+
     return elements,directions
 
 
-# if __name__ == '__main__':
-#     load_scene()
+if __name__ == '__main__':
+    print(get_disassembly())
