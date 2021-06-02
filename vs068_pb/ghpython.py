@@ -140,7 +140,9 @@ def load_mesh(file_id, pos=[1,0,0], concavity=False):
         mesh_geo = Geometry(physicsClientId=scene.physicsClientId, mass=100.0, safety_margin=1.05)
         mesh_geo.define_mesh(file_id, pose_centre=[pos, [0,0,0,1]], scale=1, concavity=concavity)
         scene.add_object(mesh_geo)
+        time.sleep(0.1)
         #scene.initialise_allowed()
+    #return scene.collision_ids[-1]
 
 def clear_scene():
     print("Clearing scene")
@@ -293,7 +295,7 @@ def get_disassembly(n = 0, rebuild_tree=False, depth_mult=5):
 
     return elements,directions
 
-Assembly = d.Assembly
+#Assembly = d.Assembly
 
 # if __name__ == '__main__':
 #     print(get_disassembly())
