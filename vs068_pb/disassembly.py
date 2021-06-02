@@ -203,7 +203,7 @@ class Assembly(object):
         Check to stop us from "pulling the rug out" from under an element in disassembly
         """
         num_ngbrs = len(self.succession[element])
-
+        
         num_successors = 0
         for ngbr in self.succession[element]:       
             if ngbr in self.current_assembly and ngbr not in self.base:
@@ -366,11 +366,12 @@ class Assembly(object):
             self.combine_all()
 
         lend = [len(d) for d in directions]
-        print(sum(lend))
-        print("Min : {}".format(min(lend)))
-        print("Max : {}".format(max(lend)))
-        print("Ave : {}".format(np.mean(lend)))
-        print("Std : {}".format(np.std(lend)))
+        if lend != []:
+            print(sum(lend))
+            print("Min : {}".format(min(lend)))
+            print("Max : {}".format(max(lend)))
+            print("Ave : {}".format(np.mean(lend)))
+            print("Std : {}".format(np.std(lend)))
 
         return elements, directions
 
@@ -732,8 +733,8 @@ if __name__ == '__main__':
         test = Assembly()
         # print([len(i) for i in test.current_frees])
         # input()
-        test.disassembly_tree(60*60*1.5, min_freedom=0)
-    #disassemble()
+        test.disassembly_tree(60*60*1.5, min_freedom=0, depth_mult=10)
+    disassemble()
 
     def check_succession():
         test = Assembly()
@@ -744,8 +745,8 @@ if __name__ == '__main__':
         for el in [49, 25, 73]:
             print(test.succession[el])
 
-    import cProfile
-    cProfile.run('disassemble()')
+    # import cProfile
+    # cProfile.run('disassemble()')
 
     def plot_tree():
         test = Assembly()
