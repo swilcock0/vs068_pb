@@ -275,12 +275,12 @@ def display_contacts(step_sim=False):
     else:
         return 0
 
-def get_disassembly(n = 0, rebuild_tree=False):
+def get_disassembly(n = 0, rebuild_tree=False, depth_mult=5):
     print("Calling from disassembly module")
     from vs068_pb.disassembly import Assembly
     test = d.Assembly()
     if rebuild_tree:
-        test.disassembly_tree(time_limit=60*5)
+        test.disassembly_tree(time_limit=60*5, depth_mult=depth_mult)
 
     tree = test.load_tree()
     #elements, directions = test.disassemble_loosest()
@@ -293,6 +293,7 @@ def get_disassembly(n = 0, rebuild_tree=False):
 
     return elements,directions
 
+Assembly = d.Assembly
 
-if __name__ == '__main__':
-    print(get_disassembly())
+# if __name__ == '__main__':
+#     print(get_disassembly())

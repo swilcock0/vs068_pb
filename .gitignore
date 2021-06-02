@@ -13,9 +13,3 @@ vs068_pb/motion/__pycache__/__init__.cpython-37.pyc
 vs068_pb/motion/__pycache__/
 resources/ghpython_log.txt
 resources/dissassembly_log.txt
-resources/pickles/assembly_tree.pickle
-resources/pickles/assembly.pickle
-
-*.pickle
-
-resources/pickles/

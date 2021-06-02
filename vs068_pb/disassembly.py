@@ -39,7 +39,7 @@ class Assembly(object):
             print("Initialising with new directions...")
 
             # Convert to tuples for easing set operations
-            #print(free_directions)
+            print(free_directions)
             self.free_directions = [[[tuple(direction) for direction in face] for face in element] for element in free_directions]
             self.test_directions = [tuple(direction) for direction in test_directions]
             self.liaisons = liaisons
@@ -130,9 +130,13 @@ class Assembly(object):
             else:
                 neighbours = self.get_full_neighbours(el)
                 precedence_el = [p for p in neighbours if self.centroids[p][2] < own_z-0.2]
-
                 self.precedence.append(precedence_el)
-                #break # Comment this out for multiple predecessors
+                # if len(precedence_el) > 0:
+
+                #     self.precedence.append([precedence_el[0]])
+                # else:
+                #     self.precedence.append(precedence_el)
+                #continue # Comment this out for multiple predecessors
         
         self.succession = [[] for i in range(self.num_members)]
 
@@ -198,11 +202,16 @@ class Assembly(object):
         """ 
         Check to stop us from "pulling the rug out" from under an element in disassembly
         """
+        num_ngbrs = len(self.succession[element])
+
+        num_successors = 0
         for ngbr in self.succession[element]:       
             if ngbr in self.current_assembly and ngbr not in self.base:
-                return False
-        
-        return True
+                num_successors += 1
+        if num_successors == num_ngbrs:
+            return False
+        else:
+            return True
 
     def recursive_disassembler(self, state=None, base=None, fixed_base=True, successful=[], min_freedom=0, depth_mult=5):
         if state == None:
@@ -220,7 +229,7 @@ class Assembly(object):
         if fixed_base:
             free_elements = [i for i in free_elements if i not in self.base]
         
-        free_elements = [f for f in free_elements if self.check_succession(f)]
+        #free_elements = [f for f in free_elements if self.check_succession(f)]
         #if len(free_elements) > 2:
         #    free_elements = free_elements[:2]
 
@@ -288,11 +297,11 @@ class Assembly(object):
         #yield successful
         return 
 
-    def disassembly_tree(self, time_limit = 10, min_freedom=0):
+    def disassembly_tree(self, time_limit = 10, min_freedom=0, depth_mult=5):
         self.reset_assembly()
         start_time = time.time()
         end_time = time_limit
-        gen_diss = self.recursive_disassembler(min_freedom=min_freedom, depth_mult=1000)
+        gen_diss = self.recursive_disassembler(min_freedom=min_freedom, depth_mult=depth_mult)
         elements = []
         while time.time() - start_time < end_time:
             try:
@@ -301,7 +310,7 @@ class Assembly(object):
                 print("We must have found all disassemblies! Saving")
                 print("Time taken : {} seconds".format(int(time.time() - start_time)))
                 break
-        
+
         if time.time() - start_time > end_time:
             print("Timed out at {} seconds".format(int(time.time() - start_time)))
 
@@ -571,6 +580,8 @@ class Assembly(object):
     def plot_liaisons(self):
         graph = ig.Graph()
         graph.add_vertices(self.num_members)
+        nr_vertices = graph.vcount()
+        labels = list(range(nr_vertices))
 
         for cnt in range(self.num_members):
             if len(self.liaisons[cnt]) > 0:
@@ -581,6 +592,85 @@ class Assembly(object):
         
         layout = graph.layout('circle')
         ig.plot(graph, layout=layout)
+
+        position = {k: layout[k] for k in range(nr_vertices)}
+
+        for k in position:
+            position[k][0] *= 200
+            position[k][1] *= 200
+
+        # ig.plot(graph, layout = lay)
+
+        Y = [200*layout[k][1] for k in range(nr_vertices)]
+        M = max(Y)
+
+        es = ig.EdgeSeq(graph) # sequence of edges
+        E = [e.tuple for e in graph.es] # list of edges
+
+        L = len(position)
+        Xn = [position[k][0] for k in range(L)]
+        Yn = [2*M-position[k][1] for k in range(L)]
+        Xe = []
+        Ye = []
+        for edge in E:
+            Xe+=[position[edge[0]][0],position[edge[1]][0], None]
+            Ye+=[2*M-position[edge[0]][1],2*M-position[edge[1]][1], None]
+
+        import plotly.graph_objects as go
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=Xe,
+                        y=Ye,
+                        mode='lines',
+                        line=dict(color='rgb(210,210,210)', width=1),
+                        hoverinfo='none'
+                        ))
+        fig.add_trace(go.Scatter(x=Xn,
+                        y=Yn,
+                        mode='markers',
+                        name='bla',
+                        marker=dict(symbol='circle-dot',
+                                        size=18,
+                                        color='#6175c1',    #'#DB4551',
+                                        line=dict(color='rgb(50,50,50)', width=1)
+                                        ),
+                        text=labels,
+                        hoverinfo='text',
+                        opacity=0.8
+                        ))
+
+        def make_annotations(pos, text, font_size=10, font_color='rgb(250,250,250)'):
+            L=len(pos)
+            if len(text)!=L:
+                raise ValueError('The lists pos and text must have the same len')
+            annotations = []
+            for k in range(L):
+                annotations.append(
+                    dict(
+                        text=labels[k], # or replace labels with a different list for the text within the circle
+                        x=pos[k][0], y=2*M-position[k][1],
+                        xref='x1', yref='y1',
+                        font=dict(color=font_color, size=font_size),
+                        showarrow=False)
+                )
+            return annotations
+
+        axis = dict(showline=False, # hide axis line, grid, ticklabels and  title
+            zeroline=False,
+            showgrid=False,
+            showticklabels=False,
+            )
+
+        fig.update_layout(title= 'Liaison node graph',
+                    annotations=make_annotations(position, labels),
+                    font_size=12,
+                    showlegend=False,
+                    xaxis=axis,
+                    yaxis=axis,
+                    margin=dict(l=40, r=40, b=85, t=100),
+                    hovermode='closest',
+                    plot_bgcolor='rgb(248,248,248)'
+                    )
+        fig.show(renderer="browser")
 
     class TreeNode(object):
         def __init__(self, id_e=-1, parent=None, cum_freedom=0, num_left=9999):
@@ -654,8 +744,8 @@ if __name__ == '__main__':
         for el in [49, 25, 73]:
             print(test.succession[el])
 
-    # import cProfile
-    # cProfile.run('disassemble()')
+    import cProfile
+    cProfile.run('disassemble()')
 
     def plot_tree():
         test = Assembly()
@@ -700,6 +790,6 @@ if __name__ == '__main__':
     # print(test.precedence)
     # print(test.succession)
 
-    test = Assembly()
-    test.plot_liaisons()
-    print(test.liaisons)
+    # test = Assembly()
+    # test.plot_liaisons()
+    # print(test.liaisons)
