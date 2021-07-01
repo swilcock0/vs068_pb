@@ -39,7 +39,7 @@ def clean_stdout():
     print("Closing logfile...")
     sys.stdout.close()    
 
-@atexit.register
+#@atexit.register
 def clean_temp():
     try:
         if config.tmp:
@@ -128,16 +128,20 @@ def load_scene(load_floor=False, quiet=False):
 
     return botId, cid
 
+def del_bot():
+    scene = config.SCENE_STORAGE
+    scene.del_bot()
+
 def get_temp_obj_path():
     config.tmp = tempfile.TemporaryDirectory()
     return os.path.join(config.tmp.name, "temp.obj")
 
-def load_mesh(file_id, pos=[1,0,0], concavity=False):  
+def load_mesh(file_id, pos=[1,0,0], concavity=False, margin=1.05):  
     print("Loading mesh from ", file_id)
     scene = config.SCENE_STORAGE
     
     if scene:
-        mesh_geo = Geometry(physicsClientId=scene.physicsClientId, mass=100.0, safety_margin=1.05)
+        mesh_geo = Geometry(physicsClientId=scene.physicsClientId, mass=100.0, safety_margin=margin)
         mesh_geo.define_mesh(file_id, pose_centre=[pos, [0,0,0,1]], scale=1, concavity=concavity)
         scene.add_object(mesh_geo)
         time.sleep(0.1)
@@ -295,7 +299,7 @@ def get_disassembly(n = 0, rebuild_tree=False, depth_mult=5):
 
     return elements,directions
 
-#Assembly = d.Assembly
+Assembly = d.Assembly
 
 # if __name__ == '__main__':
 #     print(get_disassembly())

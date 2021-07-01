@@ -18,7 +18,9 @@ class Scene(object):
             self.initialise_collision_fn()
         self.floor_id = -1
         self.quiet = quiet
-        
+
+    def del_bot(self):
+        p.removeBody(self.botId, physicsClientId=self.physicsClientId)  
 
     def get_scene_dict(self):
         dict_out = OrderedDict()
@@ -91,7 +93,7 @@ class Scene(object):
         self.object_counter_max += 1
         geometry.add_collision()
         geometry.add_visual()
-        
+     
 
     def remove_object(self, object_count):
         id_num = self.collision_objects[object_count].id_collision
