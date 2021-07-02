@@ -215,7 +215,7 @@ class Assembly(object):
 
     def check_succession_2(self, element):
         successors = self.succession[element]
-
+        return True
         for s in successors:
             predecessors = self.precedence[element]
             p_test = [p in self.current_assembly for p in predecessors]

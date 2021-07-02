@@ -37,7 +37,7 @@ def view_path(paths, goals=None, success_list=None, visual_fn = lambda q: False,
     xKey = ord('x')
     cKey = ord('c')
     mKey = ord('m')
-    pKey = ord('p')
+    pKey = ord('l')
     upKey = p.B3G_UP_ARROW
     downKey = p.B3G_DOWN_ARROW
     spaceKey = p.B3G_SPACE
@@ -216,7 +216,7 @@ def view_trajectory(trajectories, goals=None, success_list=None, visual_fn = lam
 
 
                 events = p.getKeyboardEvents(cid)
-                if ord('p') in events:
+                if ord('l') in events:
                     print("Plotting graph")
                     graph_trajectory(trajectory)
 

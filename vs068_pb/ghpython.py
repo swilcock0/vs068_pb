@@ -39,7 +39,7 @@ def clean_stdout():
     print("Closing logfile...")
     sys.stdout.close()    
 
-#@atexit.register
+@atexit.register
 def clean_temp():
     try:
         if config.tmp:
@@ -134,17 +134,23 @@ def del_bot():
 
 def get_temp_obj_path():
     config.tmp = tempfile.TemporaryDirectory()
+    #config.tmp = tempfile.NamedTemporaryFile(suffix='.obj')
+    #return os.path.join(config.src_fldr, "temp.obj")
     return os.path.join(config.tmp.name, "temp.obj")
+    #print(config.tmp.name)
+    #return config.tmp.name
 
 def load_mesh(file_id, pos=[1,0,0], concavity=False, margin=1.05):  
+    p.setPhysicsEngineParameter(enableFileCaching=0)
     print("Loading mesh from ", file_id)
     scene = config.SCENE_STORAGE
     
-    if scene:
-        mesh_geo = Geometry(physicsClientId=scene.physicsClientId, mass=100.0, safety_margin=margin)
-        mesh_geo.define_mesh(file_id, pose_centre=[pos, [0,0,0,1]], scale=1, concavity=concavity)
-        scene.add_object(mesh_geo)
-        time.sleep(0.1)
+    if scene and os.path.isfile(file_id):
+            mesh_geo = Geometry(physicsClientId=scene.physicsClientId, mass=100.0, safety_margin=margin)
+            mesh_geo.define_mesh(file_id, pose_centre=[pos, [0,0,0,1]], scale=1, concavity=concavity)
+            scene.add_object(mesh_geo)
+            #time.sleep(0.1)
+        
         #scene.initialise_allowed()
     #return scene.collision_ids[-1]
 
