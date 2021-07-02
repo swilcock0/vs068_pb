@@ -44,6 +44,10 @@ def clean_temp():
     try:
         if config.tmp:
             config.tmp.cleanup()
+            if os.path.exists(config.tmp.name):
+                import shutil
+                shutil.rmtree(config.tmp.name)
+            del config.tmp
     except:
         pass
     #config.tmp.close()
@@ -132,24 +136,27 @@ def del_bot():
     scene = config.SCENE_STORAGE
     scene.del_bot()
 
+def sort_concavity(filename):
+    p.vhacd(filename, filename, os.path.join(config.src_fldr, "vhacd.log"), concavity=1.0)
+
 def get_temp_obj_path():
     config.tmp = tempfile.TemporaryDirectory()
-    #config.tmp = tempfile.NamedTemporaryFile(suffix='.obj')
+    #config.tmp = tempfile.NamedTemporaryFile(suffix='.obj', delete=False)
     #return os.path.join(config.src_fldr, "temp.obj")
-    return os.path.join(config.tmp.name, "temp.obj")
-    #print(config.tmp.name)
+    return config.tmp.name
+
     #return config.tmp.name
 
 def load_mesh(file_id, pos=[1,0,0], concavity=False, margin=1.05):  
-    p.setPhysicsEngineParameter(enableFileCaching=0)
+    #p.setPhysicsEngineParameter(enableFileCaching=0)
     print("Loading mesh from ", file_id)
     scene = config.SCENE_STORAGE
     
     if scene and os.path.isfile(file_id):
-            mesh_geo = Geometry(physicsClientId=scene.physicsClientId, mass=100.0, safety_margin=margin)
-            mesh_geo.define_mesh(file_id, pose_centre=[pos, [0,0,0,1]], scale=1, concavity=concavity)
-            scene.add_object(mesh_geo)
-            #time.sleep(0.1)
+        mesh_geo = Geometry(physicsClientId=scene.physicsClientId, mass=100.0, safety_margin=margin)
+        mesh_geo.define_mesh(file_id, pose_centre=[pos, [0,0,0,1]], scale=1, concavity=concavity)
+        scene.add_object(mesh_geo)
+        #time.sleep(0.1)
         
         #scene.initialise_allowed()
     #return scene.collision_ids[-1]

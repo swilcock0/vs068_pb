@@ -1,5 +1,5 @@
 import vs068_pb.config as config
-from vs068_pb.utils import set_joint_states, Disconnect, loadFloor
+from vs068_pb.utils import set_joint_states, Disconnect, loadFloor, HideOutput
 import pybullet as p
 import pybullet_data
 import random
@@ -221,6 +221,7 @@ class Geometry(object):
         p.changeVisualShape(self.id_visual, -1, rgbaColor=colour)
 
     def define_mesh(self, filename, pose_centre=[[0,0,0], [0,0,0,1]], scale=1, concavity=False):
+        import os
         self.geometry_type = p.GEOM_MESH
         self.pose = pose_centre
 
@@ -233,6 +234,11 @@ class Geometry(object):
             self.safety_margin += 1
         
         safetyScale = [scale*self.safety_margin, scale*self.safety_margin, scale*self.safety_margin]
+        if concavity:
+            filename_new = os.path.join(config.tmp.name, "vhacd.obj")
+            with HideOutput():
+                p.vhacd(filename, filename_new, os.path.join(config.src_fldr, "vhacd.log"), concavity=1.0, maxNumVerticesPerCH=1024)
+            file_id = filename_new
 
         def add_collision():
             colour = self.rgbaColor
@@ -242,9 +248,9 @@ class Geometry(object):
                 mesh_col = p.createCollisionShape(p.GEOM_MESH, 
                                 physicsClientId=self.physicsClientId, 
                                 fileName = file_id, 
-                                meshScale=safetyScale,
-                                flags=p.GEOM_FORCE_CONCAVE_TRIMESH
-                                )
+                                meshScale=safetyScale
+                                )#,
+                                #flags=p.GEOM_FORCE_CONCAVE_TRIMESH
             else:
                 mesh_col = p.createCollisionShape(p.GEOM_MESH, 
                                 physicsClientId=self.physicsClientId, 
