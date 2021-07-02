@@ -28,6 +28,7 @@ root.destroy()
 # Data folders and locations
 src_fldr = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', "resources")
 urdf = os.path.join(src_fldr, "vs068_with_gripper_pybullet.urdf")  
+shared_exe = r"C:\Users\Sam\Documents\GitHub\bullet3\bin\App_PhysicsServer_SharedMemory_GUI_vs2010_x64_release.exe"
 
 
 #################
@@ -55,6 +56,7 @@ TEST_COLLISIONS_VERBOSE=True
 PLANNING_VERBOSE=True
 DISASSEMBLY_VERBOSE=False
 SCENE_STORAGE = None
+P_SCENE_STORAGE = None
 CONTACT_POINT_STORAGE = None
 CONTACT_LINE_STORAGE = None
 

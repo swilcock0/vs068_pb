@@ -18,6 +18,26 @@ class Scene(object):
             self.initialise_collision_fn()
         self.floor_id = -1
         self.quiet = quiet
+        self.constraint = []
+        self.constraint_object = -1
+
+    def disable_self_collisions(self):
+        for cobject in self.collision_objects:
+            p.setCollisionFilterPair(self.collision_objects[cobject].id_collision, self.floor_id, -1, -1, 0, self.physicsClientId)
+            for mobject in self.collision_objects:
+                p.setCollisionFilterPair(self.collision_objects[cobject].id_collision, self.collision_objects[mobject].id_collision, -1, -1, 0, self.physicsClientId)
+                
+    def attach_object(self, cobject):
+        self.constraint.append(p.createConstraint(self.botId, config.EEF_ID, self.collision_objects[cobject].id_collision, -1, p.JOINT_FIXED, [0,0,0], [0, 0, 0], [0, 0, 0]))
+        self.constraint.append(p.createConstraint(self.botId, config.EEF_ID, self.collision_objects[cobject].id_visual, -1, p.JOINT_FIXED, [0,0,0], [0, 0, 0], [0, 0, 0]))
+        self.constraint_object = cobject
+
+    def detach_object(self):
+        for c in self.constraint:
+            p.removeConstraint(c, self.physicsClientId)
+
+        self.constraint = []
+        p.resetBaseVelocity(self.collision_objects[self.constraint_object].id_collision, [0,0,0], [0,0,0], self.physicsClientId)
 
     def del_bot(self):
         p.removeBody(self.botId, physicsClientId=self.physicsClientId)  
@@ -237,8 +257,8 @@ class Geometry(object):
         if concavity:
             filename_new = os.path.join(config.tmp.name, "vhacd.obj")
             with HideOutput():
-                p.vhacd(filename, filename_new, os.path.join(config.src_fldr, "vhacd.log"), concavity=1.0, maxNumVerticesPerCH=1024)
-            file_id = filename_new
+                p.vhacd(filename, filename_new, os.path.join(config.src_fldr, "vhacd.log"), concavity=0.001, mode=1, convexhullDownsampling=16)
+            file_id_conc = filename_new
 
         def add_collision():
             colour = self.rgbaColor
@@ -247,7 +267,7 @@ class Geometry(object):
             if concavity:
                 mesh_col = p.createCollisionShape(p.GEOM_MESH, 
                                 physicsClientId=self.physicsClientId, 
-                                fileName = file_id, 
+                                fileName = file_id_conc, 
                                 meshScale=safetyScale
                                 )#,
                                 #flags=p.GEOM_FORCE_CONCAVE_TRIMESH

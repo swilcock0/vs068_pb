@@ -1034,5 +1034,5 @@ def flip_dict(dictionary):
 def run_shared_physics():
     import subprocess
     DETACHED_PROCESS = 8
-    executable = os.path.join(config.src_fldr, "SharedMemoryPhysicsServer.exe")
+    executable = config.shared_exe
     subprocess.Popen(executable, creationflags=DETACHED_PROCESS)

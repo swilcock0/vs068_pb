@@ -3,7 +3,7 @@ import os
 import vs068_pb.config as config
 sys.stdout = open(os.path.join(config.src_fldr, "ghpython_log.txt"), 'w') # Change to 'a' for append
 
-from vs068_pb.utils import quick_load_bot, set_joint_states
+from vs068_pb.utils import quick_load_bot, set_joint_states, run_shared_physics
 import numpy as np
 import pybullet as p
 
@@ -119,9 +119,9 @@ def load_demo():
 def is_connected():
     return p.isConnected() == 1
 
-def load_scene(load_floor=False, quiet=False):
+def load_scene(load_floor=False, quiet=False, mode=p.GUI):
     Disconnect()
-    botId, cid = quick_load_bot(p.GUI, quiet=quiet)
+    botId, cid = quick_load_bot(mode, quiet=quiet)
 
     scene = Scene(cid, botId, quiet=quiet)
 
@@ -135,9 +135,6 @@ def load_scene(load_floor=False, quiet=False):
 def del_bot():
     scene = config.SCENE_STORAGE
     scene.del_bot()
-
-def sort_concavity(filename):
-    p.vhacd(filename, filename, os.path.join(config.src_fldr, "vhacd.log"), concavity=1.0)
 
 def get_temp_obj_path():
     config.tmp = tempfile.TemporaryDirectory()
@@ -197,9 +194,12 @@ def set_realtime():
     p.setGravity(0.0, 0.0, -9.81, config.SCENE_STORAGE.physicsClientId)
     p.setRealTimeSimulation(1, config.SCENE_STORAGE.physicsClientId)
 
+def disable_scene_collisions():
+    config.SCENE_STORAGE.disable_self_collisions()
+
 def step(n_it=1000):
     print("Stepping {} times".format(n_it))
-    p.setGravity(0.0, 0.0, -9.81, config.SCENE_STORAGE.physicsClientId)
+    #p.setGravity(0.0, 0.0, -9.81, config.SCENE_STORAGE.physicsClientId)
     for n in range(n_it):
         if is_connected():
             config.SCENE_STORAGE.step()
@@ -241,6 +241,36 @@ def check_contacts():
 #         scene = config.SCENE_STORAGE
 
 #         scene.
+
+def start_shared():
+    print("Connecting to shared...")
+    #Disconnect()
+    run_shared_physics()
+    time.sleep(2)
+    
+    print("Connected!")
+    import copy
+    botId, cid = quick_load_bot(p.SHARED_MEMORY, quiet=True)
+    print("Loaded bot")
+    config.P_SCENE_STORAGE = copy.deepcopy(config.SCENE_STORAGE)
+    
+    scene = config.P_SCENE_STORAGE
+
+    if scene:
+        scene.change_physics_clients(cid)
+
+def attach_object(cobject):
+    scene = config.SCENE_STORAGE
+    scene.attach_object(int(cobject))
+
+def detach_object():
+    config.SCENE_STORAGE.detach_object()
+
+# def plan_to_pose(pose):
+#     from vs068_pb.motion.rrt_connect import rrt_connect
+
+#     collision_fn = scene.initialise_collision_fn()
+#     visual_fn = scene.visual_fn
 
 def clear_contacts():
     if config.SCENE_STORAGE:
